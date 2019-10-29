@@ -13,7 +13,7 @@ verification_token = os.environ['PUBSUB_VERIFICATION_TOKEN']
 domain_token = config.DOMAIN_VALIDATION_TOKEN
 
 
-def topic_to_datastore(request):
+def topic_to_xml(request):
     if request.method == 'POST':
         return '''
              <html>
