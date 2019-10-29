@@ -7,5 +7,4 @@ class DBProcessor(object):
         pass
 
     def process(self, payload):
-        print(payload['Metadata'])
-        print(payload['Invoice']['InvoiceNumber'])
+        print(payload['InvoiceNumber'])
