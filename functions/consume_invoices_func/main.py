@@ -1,4 +1,3 @@
-
 import logging
 import json
 import base64
@@ -14,7 +13,7 @@ domain_token = config.DOMAIN_VALIDATION_TOKEN
 
 
 def topic_to_xml(request):
-    if request.method == 'POST':
+    if request.method == 'GET':
         return '''
              <html>
                  <head>
