@@ -99,7 +99,7 @@ def scandate(jsonw):
 
 # Name of corresponding PDF
 def scantiff(jsonw):
-    newname = jsonw['Metadata']['fileName'][:-3] + "pdf"
+    newname = jsonw['Meta']['fileName'][:-3] + "pdf"
     jsonw['Data']['ScanTIFF'] = newname
 
 
