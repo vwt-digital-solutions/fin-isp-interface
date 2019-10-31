@@ -1,0 +1,51 @@
+{
+ "Invoice": {
+   "Header": {
+     "InvoiceNumber":"Invoice/Data/InvoiceNumber",
+     "InvoiceDate":"Invoice/Data/InvoiceDate",
+     "Note": "Invoice/Data/NoteTax",
+     "TotalAmount": {
+       "@currency": "Invoice/Data/currencyTotalAmount",
+       "#text": "Invoice/Data/TotalAmount"
+     },
+     "InvoiceType": "Invoice/Data/InvoiceType",
+     "TotalCharges": {
+       "@currency": "Invoice/Data/currencyTotalCharges",
+       "#text": "Invoice/Data/TotalCharges"
+     },
+     "Tax": {
+       "TotalTax": {
+         "@currency": "Invoice/Data/currencyTotalTax",
+         "@percentquantity": "Invoice/Data/percentquantityTotalTax",
+         "@taxshifted": "Invoice/Data/taxshiftedTotalTax",
+         "#text": "Invoice/Data/TotalTax"
+       }
+     },
+     "CompCodeFin": "Invoice/Data/CompCodeFin",
+     "Parties": {
+       "CustomerParty": "Invoice/Data/CompCodeFin",
+       "VendorParty": {
+         "PartyId": "Invoice/Data/VendorPartyId",
+         "TaxId": "Invoice/Data/VendorTaxId",
+         "Addresses": {
+           "PrimaryAddress": {
+             "BankAccount": "Invoice/Data/VendorBankAccount"
+           }
+         }
+       }
+     },
+     "Order": {
+       "OrderNumber": "Invoice/Data/OrderNumber"
+     },
+     "PaymentAgreementDateFrom": "Invoice/Data/PaymentAgreementDateFrom",
+     "PaymentAgreementDateTo": "Invoice/Data/PaymentAgreementDateTo"
+   },
+   "Scan": {
+     "ScanDate": "Invoice/Data/ScanDate",
+     "TIFF": "Invoice/Data/ScanTIFF"
+   },
+   "Process": {
+     "AdditionalCoding": "Invoice/Data/AdditionalCoding"
+   }
+ }
+}
