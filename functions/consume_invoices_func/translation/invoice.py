@@ -72,9 +72,7 @@ def compcodefin(jsonw):
         jsonw['OrderNumber'] = list[0]
         jsonw['CompCodeFin'] = list[0][:3]
     except IndexError:
-        list = re.findall('[0-9]{9}', jsonw['OrderNumber'])
-        jsonw['OrderNumber'] = list[0]
-        jsonw['CompCodeFin'] = list[0][:3]
+        print("wrong format ordernumber")
 
 
 # Link to VBS
