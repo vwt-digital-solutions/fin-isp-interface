@@ -65,14 +65,18 @@ def invoicetype(jsonw):
         jsonw['InvoiceType'] = 'Debit'
 
 
-# Extracts the VWT company code from ordernumber
+# Extracts the VWT company code from ordernumber +
 def compcodefin(jsonw):
-    try:
+    if re.findall('[0-9]{3}-[0-9]{6}', jsonw['OrderNumber']):
         list = re.findall('[0-9]{3}-[0-9]{6}', jsonw['OrderNumber'])
         jsonw['OrderNumber'] = list[0]
         jsonw['CompCodeFin'] = list[0][:3]
-    except IndexError:
-        print("wrong format ordernumber")
+    elif re.findall('[0-9]{6}', jsonw['OrderNumber']):
+        list = re.findall('[0-9]{3}-[0-9]{6}', jsonw['OrderNumber'])
+        jsonw['OrderNumber'] = list[0][:3] + '-' + list[4:]
+        jsonw['CompCodeFin'] = list[0][:3]
+    else:
+        print("Order Number not recognized")
 
 
 # Link to VBS
