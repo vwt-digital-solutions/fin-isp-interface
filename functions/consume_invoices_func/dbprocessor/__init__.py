@@ -60,7 +60,7 @@ class DBProcessor(object):
         print(url)
 
         multiple_files = {'xml': (name + '.xml', open(invoice_file_name, 'rb')), 'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
-        print(multiple_files)
+        print(type(multiple_files))
         '''
         # Need to be able to post PDF and XML
         r = requests.post(config.ISPINVOICES_URL, files=multiple_files, cert=cert, verify=True)
