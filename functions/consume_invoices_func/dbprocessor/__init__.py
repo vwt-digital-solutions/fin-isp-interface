@@ -24,17 +24,17 @@ class DBProcessor(object):
         client = kms_v1.KeyManagementServiceClient()
 
         # Get the passphrase for the private key
-        pk_passphrase = client.crypto_key_path_path(os.environ['GOOGLE_CLOUD_PROJECT'], 'europe-west1',
-                                                    os.environ['GOOGLE_CLOUD_PROJECT'] + '-keyring',
+        pk_passphrase = client.crypto_key_path_path(os.environ['GCP_PROJECT	'], 'europe-west1',
+                                                    os.environ['GCP_PROJECT	'] + '-keyring',
                                                     config.ISPINVOICES_KEY_PASSPHRASE)
         response = client.decrypt(pk_passphrase, open('passphrase.enc', "rb").read())
 
         passphrase = response.plaintext.decode("utf-8").replace('\n', '')
 
         # Get the private key and decode using passphrase
-        pk_enc = client.crypto_key_path_path(os.environ['GOOGLE_CLOUD_PROJECT'],
+        pk_enc = client.crypto_key_path_path(os.environ['GCP_PROJECT	'],
                                              'europe-west1',
-                                             os.environ['GOOGLE_CLOUD_PROJECT'] + '-keyring',
+                                             os.environ['GCP_PROJECT	'] + '-keyring',
                                              config.ISPINVOICES_KEY)
         response = client.decrypt(pk_enc, open('ispinvoice-pk.enc', "rb").read())
 
