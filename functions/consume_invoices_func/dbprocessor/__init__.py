@@ -1,21 +1,25 @@
 # import requests
 import os
 import config
+import xml.etree.cElementTree as ET
 
 from translation import translate
 from translation import invoice
-from google import kms_v1
+from google.cloud import kms_v1
 
 from OpenSSL import crypto
 
 
 class DBProcessor(object):
+    companycode = 'Not specified'
+
     def __init__(self):
         pass
 
     def process(self, payload):
-        xmlf = self.translatetoxml(payload)
-        pdf = ''
+        xml = self.translatetoxml(payload)
+        name = 'testfile'
+        pdf_file = name + '.pdf'
 
         client = kms_v1.KeyManagementServiceClient()
 
@@ -30,7 +34,7 @@ class DBProcessor(object):
         # Get the private key and decode using passphrase
         pk_enc = client.crypto_key_path_path(os.environ['GOOGLE_CLOUD_PROJECT'],
                                              'europe-west1',
-                                             os.environ['GOOGLE_CLOUD_PROJECT']+'-keyring',
+                                             os.environ['GOOGLE_CLOUD_PROJECT'] + '-keyring',
                                              config.ISPINVOICES_KEY)
         response = client.decrypt(pk_enc, open('ispinvoice-pk.enc', "rb").read())
 
@@ -38,18 +42,24 @@ class DBProcessor(object):
         pk = crypto.load_privatekey(crypto.FILETYPE_PEM, response.plaintext, passphrase.encode())
 
         key_file_path = "/tmp/key.pem"
-        open(key_file_path, "w").write(str(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
+        open(key_file_path, "w").write(
+            str(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
 
         # Create the HTTP POST request
         cert_file_path = "ispinvoice-cert.pem"
         cert = (cert_file_path, key_file_path)
         print(cert)
 
-        name = 'testfile'
-        xml_file = xmlf
-        pdf_file = pdf
+        # Write XML object to temporary file
+        invoice_file_string = ET.tostring(xml, encoding="utf8", method="xml")
+        invoice_file_name = f"/tmp/{name}" + ".xml"
+        open(invoice_file_name, "w").write(str(invoice_file_string, 'utf-8'))
 
-        multiple_files = {'xml': (name + '.xml', xml_file), 'pdf': (name + '.pdf', pdf_file)}
+        # Get hostname for corresponding company
+        url = config.URLS[self.companycode]
+        print(url)
+
+        multiple_files = {'xml': (name + '.xml', open(invoice_file_name, 'rb')), 'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
         print(multiple_files)
         '''
         # Need to be able to post PDF and XML
@@ -63,6 +73,9 @@ class DBProcessor(object):
     def translatetoxml(self, invoicejson):
         # Fill additional fields invoice
         invoice.enrichdata(invoicejson['Invoice'])
+
+        # Get company code
+        self.companycode = invoicejson['Invoice']['Data']['CompCodeFin']
 
         # Translate to output JSON
         outputjson = translate.translatejson(invoicejson, 'translation.json')
