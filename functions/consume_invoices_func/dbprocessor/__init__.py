@@ -1,4 +1,4 @@
-# import requests
+import requests
 import os
 import config
 import xml.etree.cElementTree as ET
@@ -62,7 +62,7 @@ class DBProcessor(object):
         multiple_files = {'xml': (name + '.xml', open("/tmp/testfile.xml", 'rb')),
                           'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
 
-        r = requests.post(config.ISPINVOICES_URL, files=multiple_files, cert=cert, verify=True)
+        r = requests.post(url, files=multiple_files, cert=cert, verify=True)
 
         if not r.ok:
             print("Failed to upload XML invoice")
