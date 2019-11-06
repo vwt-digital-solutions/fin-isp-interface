@@ -75,8 +75,8 @@ def compcodefin(jsonw):
         list = re.findall('[0-9]{9}', jsonw['OrderNumber'])
         jsonw['OrderNumber'] = str(list[0][:3]) + '-' + str(list[0][3:])
         jsonw['CompCodeFin'] = list[0][:3]
-    elif re.findall('[0-9]{3} +[0-9]{6}', jsonw['OrderNumber']):
-        list = re.findall('[0-9]{3} +[0-9]{6}', jsonw['OrderNumber'])
+    elif re.findall('[0-9]{3} +[0-9]{6}',jsonw['OrderNumber']):
+        list = re.findall('[0-9]{3} +[0-9]{6}',jsonw['OrderNumber'])
         jsonw['OrderNumber'] = str(list[0][:3]) + '-' + str(list[0][-6:])
         jsonw['CompCodeFin'] = list[0][:3]
     else:

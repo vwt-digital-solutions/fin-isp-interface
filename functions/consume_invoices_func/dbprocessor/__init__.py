@@ -59,18 +59,27 @@ class DBProcessor(object):
         # Get hostname for corresponding company
         url = config.URLS[self.companycode]
 
-        multiple_files = {'xml': (name + '.xml', open("/tmp/testfile.xml", 'rb')),
-                          'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
+        # Send XML and PDF to share for test ISP
+        pdf = {'pdf': (pdf_file, open(pdf_file, 'rb'))}
 
-        r = requests.post(url, files=multiple_files, cert=cert, verify=True)
+        headers = {
+            'Accept': "application/pdf",
+            'Filename': name
+        }
+        rxml = requests.post(url, headers=headers, data=xml, cert=cert, verify=True)
+        rpdf = requests.post(url, headers=headers, files=pdf, cert=cert, verify=True)
 
-        if not r.ok:
+        if not rxml.ok:
             print("Failed to upload XML invoice")
         else:
             print("XML invoice sent")
 
+        if not rpdf.ok:
+            print("Failed to upload PDF invoice")
+        else:
+            print("PDF invoice sent")
+
     def translatetoxml(self, invoicejson):
-        # Fill additional fields invoice
         invoice.enrichdata(invoicejson['Invoice'])
 
         # Get company code
