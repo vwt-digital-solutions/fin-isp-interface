@@ -20,21 +20,22 @@ class DBProcessor(object):
         xml = self.translatetoxml(payload)
         name = 'testfile'
         pdf_file = name + '.pdf'
+        xml_file = f"/tmp/{name}" + ".xml"
 
         client = kms_v1.KeyManagementServiceClient()
 
         # Get the passphrase for the private key
-        pk_passphrase = client.crypto_key_path_path(os.environ['GCP_PROJECT	'], 'europe-west1',
-                                                    os.environ['GCP_PROJECT	'] + '-keyring',
+        pk_passphrase = client.crypto_key_path_path(os.environ['GCP_PROJECT'], 'europe-west1',
+                                                    os.environ['GCP_PROJECT'] + '-keyring',
                                                     config.ISPINVOICES_KEY_PASSPHRASE)
         response = client.decrypt(pk_passphrase, open('passphrase.enc', "rb").read())
 
         passphrase = response.plaintext.decode("utf-8").replace('\n', '')
 
         # Get the private key and decode using passphrase
-        pk_enc = client.crypto_key_path_path(os.environ['GCP_PROJECT	'],
+        pk_enc = client.crypto_key_path_path(os.environ['GCP_PROJECT'],
                                              'europe-west1',
-                                             os.environ['GCP_PROJECT	'] + '-keyring',
+                                             os.environ['GCP_PROJECT'] + '-keyring',
                                              config.ISPINVOICES_KEY)
         response = client.decrypt(pk_enc, open('ispinvoice-pk.enc', "rb").read())
 
@@ -50,25 +51,23 @@ class DBProcessor(object):
         cert = (cert_file_path, key_file_path)
         print(cert)
 
-        # Write XML object to temporary file
-        invoice_file_string = ET.tostring(xml, encoding="utf8", method="xml")
-        invoice_file_name = f"/tmp/{name}" + ".xml"
-        open(invoice_file_name, "w").write(str(invoice_file_string, 'utf-8'))
+        # Write XML to file
+        tree = ET.ElementTree(ET.fromstring(xml))
+
+        tree.write(xml_file, encoding='utf8', xml_declaration=True, method='xml')
 
         # Get hostname for corresponding company
         url = config.URLS[self.companycode]
-        print(url)
 
-        multiple_files = {'xml': (name + '.xml', open(invoice_file_name, 'rb')), 'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
-        print(type(multiple_files))
-        '''
-        # Need to be able to post PDF and XML
+        multiple_files = {'xml': (name + '.xml', open("/tmp/testfile.xml", 'rb')),
+                          'pdf': (name + '.pdf', open(pdf_file, 'rb'))}
+
         r = requests.post(config.ISPINVOICES_URL, files=multiple_files, cert=cert, verify=True)
+
         if not r.ok:
             print("Failed to upload XML invoice")
         else:
             print("XML invoice sent")
-        '''
 
     def translatetoxml(self, invoicejson):
         # Fill additional fields invoice
@@ -81,4 +80,4 @@ class DBProcessor(object):
         outputjson = translate.translatejson(invoicejson, 'translation.json')
 
         # Translate to XML for ISP
-        print(translate.translatexmljson(outputjson))
+        return translate.translatexmljson(outputjson)
