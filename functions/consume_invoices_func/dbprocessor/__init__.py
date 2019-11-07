@@ -12,15 +12,18 @@ from OpenSSL import crypto
 
 class DBProcessor(object):
     companycode = 'Not specified'
+    url = 'Not specified'
+    filename = 'Not specified'
 
     def __init__(self):
         pass
 
     def process(self, payload):
         xml = self.translatetoxml(payload)
-        name = 'testfile'
-        pdf_file = name + '.pdf'
-        xml_file = f"/tmp/{name}" + ".xml"
+
+        # Same name for XML and PDF
+        pdf_file = self.filename + '.pdf'
+        xml_file = f"/tmp/{self.filename}" + ".xml"
 
         client = kms_v1.KeyManagementServiceClient()
 
@@ -55,26 +58,23 @@ class DBProcessor(object):
         tree = ET.ElementTree(ET.fromstring(xml))
         tree.write(xml_file, encoding='utf8', xml_declaration=True, method='xml')
 
-        # Get hostname for corresponding company
-        url = config.URLS[self.companycode]
-
         # Send XML and PDF to share for test ISP
         pdf = {'pdf': (pdf_file, open(pdf_file, 'rb'))}
 
         headers = {
             'Accept': "application/pdf",
-            'Filename': name
+            'Filename': self.filename
         }
 
         # Posting XML and PDF file to server in separate requests
-        rxml = requests.post(url, headers=headers, data=xml, cert=cert, verify=True)
+        rxml = requests.post(self.url, headers=headers, data=xml, cert=cert, verify=True)
 
         if not rxml.ok:
             print("Failed to upload XML invoice")
         else:
             print("XML invoice sent")
 
-            rpdf = requests.post(url, headers=headers, files=pdf, cert=cert, verify=True)
+            rpdf = requests.post(self.url, headers=headers, files=pdf, cert=cert, verify=True)
             if not rpdf.ok:
                 print("Failed to upload PDF invoice")
             else:
@@ -84,11 +84,21 @@ class DBProcessor(object):
         # Enrich invoice JSON with data
         invoice.enrichdata(invoicejson['Invoice'])
 
-        # Get company code
-        self.companycode = invoicejson['Invoice']['Data']['CompCodeFin']
+        self.companyrouting(invoicejson)
+
+        # Get company code and filename from JSON
+        self.filename = invoicejson['Invoice']['Data']['ScanTIFF']
 
         # Translate to output JSON
         outputjson = translate.translatejson(invoicejson, 'translation.json')
 
         # Translate to XML for ISP
         return translate.translatexmljson(outputjson)
+
+    # Get hostname for corresponding company
+    def companyrouting(self, invoicejson):
+        # Company code
+        self.companycode = invoicejson['Invoice']['Data']['CompCodeFin']
+
+        # Make URL from dictionary in config
+        self.url = config.HOSTNAME_TEST + config.URLS[self.companycode]
