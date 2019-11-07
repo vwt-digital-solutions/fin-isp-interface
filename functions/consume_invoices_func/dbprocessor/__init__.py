@@ -53,7 +53,6 @@ class DBProcessor(object):
 
         # Write XML to file
         tree = ET.ElementTree(ET.fromstring(xml))
-
         tree.write(xml_file, encoding='utf8', xml_declaration=True, method='xml')
 
         # Get hostname for corresponding company
@@ -66,20 +65,23 @@ class DBProcessor(object):
             'Accept': "application/pdf",
             'Filename': name
         }
+
+        # Posting XML and PDF file to server in separate requests
         rxml = requests.post(url, headers=headers, data=xml, cert=cert, verify=True)
-        rpdf = requests.post(url, headers=headers, files=pdf, cert=cert, verify=True)
 
         if not rxml.ok:
             print("Failed to upload XML invoice")
         else:
             print("XML invoice sent")
 
-        if not rpdf.ok:
-            print("Failed to upload PDF invoice")
-        else:
-            print("PDF invoice sent")
+            rpdf = requests.post(url, headers=headers, files=pdf, cert=cert, verify=True)
+            if not rpdf.ok:
+                print("Failed to upload PDF invoice")
+            else:
+                print("PDF invoice sent")
 
     def translatetoxml(self, invoicejson):
+        # Enrich invoice JSON with data
         invoice.enrichdata(invoicejson['Invoice'])
 
         # Get company code
