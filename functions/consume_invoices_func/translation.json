@@ -1,51 +1,51 @@
 {
  "Invoice": {
    "Header": {
-     "InvoiceNumber":"Invoice/Data/InvoiceNumber",
-     "InvoiceDate":"Invoice/Data/InvoiceDate",
-     "Note": "Invoice/Data/NoteTax",
+     "InvoiceNumber":"invoice/InvoiceNumber",
+     "InvoiceDate":"invoice/InvoiceDate",
+     "Note": "invoice/NoteTax",
      "TotalAmount": {
-       "@currency": "Invoice/Data/currencyTotalAmount",
-       "#text": "Invoice/Data/TotalAmount"
+       "@currency": "invoice/currencyTotalAmount",
+       "#text": "invoice/TotalAmount"
      },
-     "InvoiceType": "Invoice/Data/InvoiceType",
+     "InvoiceType": "invoice/InvoiceType",
      "TotalCharges": {
-       "@currency": "Invoice/Data/currencyTotalCharges",
-       "#text": "Invoice/Data/TotalCharges"
+       "@currency": "invoice/currencyTotalCharges",
+       "#text": "invoice/TotalCharges"
      },
      "Tax": {
        "TotalTax": {
-         "@currency": "Invoice/Data/currencyTotalTax",
-         "@percentquantity": "Invoice/Data/percentquantityTotalTax",
-         "@taxshifted": "Invoice/Data/taxshiftedTotalTax",
-         "#text": "Invoice/Data/TotalTax"
+         "@currency": "invoice/currencyTotalTax",
+         "@percentquantity": "invoice/percentquantityTotalTax",
+         "@taxshifted": "invoice/taxshiftedTotalTax",
+         "#text": "invoice/TotalTax"
        }
      },
-     "CompCodeFin": "Invoice/Data/CompCodeFin",
+     "CompCodeFin": "invoice/CompCodeFin",
      "Parties": {
-       "CustomerParty": "Invoice/Data/CompCodeFin",
+       "CustomerParty": "invoice/CompCodeFin",
        "VendorParty": {
-         "PartyId": "Invoice/Data/VendorPartyId",
-         "TaxId": "Invoice/Data/VendorTaxId",
+         "PartyId": "invoice/VendorPartyId",
+         "TaxId": "invoice/VendorTaxId",
          "Addresses": {
            "PrimaryAddress": {
-             "BankAccount": "Invoice/Data/VendorBankAccount"
+             "BankAccount": "invoice/VendorBankAccount"
            }
          }
        }
      },
      "Order": {
-       "OrderNumber": "Invoice/Data/OrderNumber"
+       "OrderNumber": "invoice/OrderNumber"
      },
-     "PaymentAgreementDateFrom": "Invoice/Data/PaymentAgreementDateFrom",
-     "PaymentAgreementDateTo": "Invoice/Data/PaymentAgreementDateTo"
+     "PaymentAgreementDateFrom": "invoice/PaymentAgreementDateFrom",
+     "PaymentAgreementDateTo": "invoice/PaymentAgreementDateTo"
    },
    "Scan": {
-     "ScanDate": "Invoice/Data/ScanDate",
-     "TIFF": "Invoice/Data/ScanTIFF"
+     "ScanDate": "invoice/ScanDate",
+     "TIFF": "invoice/ScanTIFF"
    },
    "Process": {
-     "AdditionalCoding": "Invoice/Data/AdditionalCoding"
+     "AdditionalCoding": "invoice/AdditionalCoding"
    }
  }
 }

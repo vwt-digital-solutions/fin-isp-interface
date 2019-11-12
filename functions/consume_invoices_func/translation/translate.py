@@ -20,13 +20,6 @@ def getobj(filename):
     return jsonpaths
 
 
-# Find values (via formatlist) in the input JSON we need for our output JSON
-def findattributes(xmljson, formatjson):
-    for key in formatjson:
-        if formatjson[key]:
-            formatjson[key] = getjsonval(xmljson, formatjson[key].split('/'))
-
-
 # Recursively find path in translation JSON
 def getjsonpath(inputjson, translationjson):
     for key, value in translationjson.items():
@@ -34,7 +27,9 @@ def getjsonpath(inputjson, translationjson):
             getjsonpath(inputjson, translationjson[key])
             continue
         else:
-            translationjson[key] = getjsonval(inputjson, translationjson[key].split('/'))
+            valueforpath = getjsonval(inputjson, translationjson[key].split('/'))
+            if valueforpath != 'Not part of JSON Invoice':
+                translationjson[key] = valueforpath
 
 
 # Recursively find value in input JSON
@@ -47,24 +42,27 @@ def getjsonval(injson, path):
         else:
             return getjsonval(injson[nextpathname], path[1:])
     else:
-        return injson[nextpathname]
+        try:
+            return injson[nextpathname]
+        except KeyError:
+            return 'Not part of JSON Invoice'
 
 
 # Automatically translate xml to json or json to xml
 def translatexmljson(file):
 
     if type(file) is dict:
-
         return jsontoxml(file)
+
     elif type(file) is str:
         with open(file) as temp:
             if file.endswith('.json'):
                 jsonobj = json.load(temp)
-
                 return jsontoxml(jsonobj)
-            elif file.endswith('.xml'):
 
+            elif file.endswith('.xml'):
                 return xmltojson(temp)
+
     else:
         print('Format not supported')
 

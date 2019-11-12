@@ -4,7 +4,6 @@ import config
 import xml.etree.cElementTree as ET
 
 from translation import translate
-from translation import invoice
 from google.cloud import kms_v1
 
 from OpenSSL import crypto
@@ -22,7 +21,7 @@ class DBProcessor(object):
         xml = self.translatetoxml(payload)
 
         # Same name for XML and PDF
-        pdf_file = self.filename + '.pdf'
+        pdf_file = self.filename + ".pdf"
         xml_file = f"/tmp/{self.filename}" + ".xml"
 
         client = kms_v1.KeyManagementServiceClient()
@@ -49,45 +48,51 @@ class DBProcessor(object):
         open(key_file_path, "w").write(
             str(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
 
-        # Create the HTTP POST request
         cert_file_path = "ispinvoice-cert.pem"
         cert = (cert_file_path, key_file_path)
-        print(cert)
 
         # Write XML to file
         tree = ET.ElementTree(ET.fromstring(xml))
         tree.write(xml_file, encoding='utf8', xml_declaration=True, method='xml')
 
-        # Send XML and PDF to share for test ISP
+        # Prepare PDF and XML for sending
         pdf = {'pdf': (pdf_file, open(pdf_file, 'rb'))}
 
-        headers = {
+        with open(xml_file) as xmlfi:
+            xmldata = xmlfi.read()
+
+        # CHANGE FILENAME
+        headerspdf = {
+            'Content-Type': "application/pdf",
             'Accept': "application/pdf",
-            'Filename': self.filename
+            'Filename': "testfile"                              # self.filename
+        }
+        # CHANGE FILENAME
+        headersxml = {
+            'Content-Type': "application/xml",
+            'Accept': "application/xml",
+            'Filename': "testfile"                              # self.filename
         }
 
-        # Posting XML and PDF file to server in separate requests
-        rxml = requests.post(self.url, headers=headers, data=xml, cert=cert, verify=True)
-
+        # Posting XML data and PDF file to server in separate requests
+        rxml = requests.post(self.url, headers=headersxml, data=xmldata, cert=cert, verify=True)
         if not rxml.ok:
             print("Failed to upload XML invoice")
         else:
             print("XML invoice sent")
 
-            rpdf = requests.post(self.url, headers=headers, files=pdf, cert=cert, verify=True)
+            rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
             if not rpdf.ok:
-                print("Failed to upload PDF invoice")
+                print("Failed to upload PDF invoice file")
             else:
                 print("PDF invoice sent")
 
     def translatetoxml(self, invoicejson):
-        # Enrich invoice JSON with data
-        invoice.enrichdata(invoicejson['Invoice'])
 
         self.companyrouting(invoicejson)
 
         # Get company code and filename from JSON
-        self.filename = invoicejson['Invoice']['Data']['ScanTIFF']
+        self.filename = invoicejson['invoice']['ScanTIFF']
 
         # Translate to output JSON
         outputjson = translate.translatejson(invoicejson, 'translation.json')
@@ -98,7 +103,7 @@ class DBProcessor(object):
     # Get hostname for corresponding company
     def companyrouting(self, invoicejson):
         # Company code
-        self.companycode = invoicejson['Invoice']['Data']['CompCodeFin']
+        self.companycode = invoicejson['invoice']['CompCodeFin']
 
         # Make URL from dictionary in config
         self.url = config.HOSTNAME_TEST + config.URLS[self.companycode]
