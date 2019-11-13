@@ -65,13 +65,13 @@ class DBProcessor(object):
         headerspdf = {
             'Content-Type': "application/pdf",
             'Accept': "application/pdf",
-            'Filename': "testfile"                              # self.filename
+            'Filename': self.filename
         }
         # CHANGE FILENAME
         headersxml = {
             'Content-Type': "application/xml",
             'Accept': "application/xml",
-            'Filename': "testfile"                              # self.filename
+            'Filename': self.filename
         }
 
         # Posting XML data and PDF file to server in separate requests
@@ -88,11 +88,10 @@ class DBProcessor(object):
                 print("PDF invoice sent")
 
     def translatetoxml(self, invoicejson):
-
         self.companyrouting(invoicejson)
 
         # Get company code and filename from JSON
-        self.filename = invoicejson['invoice']['ScanTIFF']
+        self.filename = invoicejson['invoice']['ScanTIFF'][:-4]
 
         # Translate to output JSON
         outputjson = translate.translatejson(invoicejson, 'translation.json')
