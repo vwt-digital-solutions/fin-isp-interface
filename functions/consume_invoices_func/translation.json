@@ -1,0 +1,51 @@
+{
+ "Invoice": {
+   "Header": {
+     "InvoiceNumber":"invoice/InvoiceNumber",
+     "InvoiceDate":"invoice/InvoiceDate",
+     "Note": "invoice/NoteTax",
+     "TotalAmount": {
+       "@currency": "invoice/currencyTotalAmount",
+       "#text": "invoice/TotalAmount"
+     },
+     "InvoiceType": "invoice/InvoiceType",
+     "TotalCharges": {
+       "@currency": "invoice/currencyTotalCharges",
+       "#text": "invoice/TotalCharges"
+     },
+     "Tax": {
+       "TotalTax": {
+         "@currency": "invoice/currencyTotalTax",
+         "@percentquantity": "invoice/percentquantityTotalTax",
+         "@taxshifted": "invoice/taxshiftedTotalTax",
+         "#text": "invoice/TotalTax"
+       }
+     },
+     "CompCodeFin": "invoice/CompCodeFin",
+     "Parties": {
+       "CustomerParty": "invoice/CompCodeFin",
+       "VendorParty": {
+         "PartyId": "invoice/VendorPartyId",
+         "TaxId": "invoice/VendorTaxId",
+         "Addresses": {
+           "PrimaryAddress": {
+             "BankAccount": "invoice/VendorBankAccount"
+           }
+         }
+       }
+     },
+     "Order": {
+       "OrderNumber": "invoice/OrderNumber"
+     },
+     "PaymentAgreementDateFrom": "invoice/PaymentAgreementDateFrom",
+     "PaymentAgreementDateTo": "invoice/PaymentAgreementDateTo"
+   },
+   "Scan": {
+     "ScanDate": "invoice/ScanDate",
+     "TIFF": "invoice/ScanTIFF"
+   },
+   "Process": {
+     "AdditionalCoding": "invoice/AdditionalCoding"
+   }
+ }
+}
