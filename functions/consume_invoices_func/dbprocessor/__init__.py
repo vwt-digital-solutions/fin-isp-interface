@@ -24,6 +24,11 @@ class DBProcessor(object):
         pdf_file = self.filename + ".pdf"
         xml_file = f"/tmp/{self.filename}" + ".xml"
 
+        # DUMMY PDF FILE: RENAME TO CURRENT FILENAME
+        for files in os.listdir("."):
+            if files.endswith(".pdf"):
+                os.rename(files, pdf_file)
+
         client = kms_v1.KeyManagementServiceClient()
 
         # Get the passphrase for the private key
@@ -61,13 +66,12 @@ class DBProcessor(object):
         with open(xml_file) as xmlfi:
             xmldata = xmlfi.read()
 
-        # CHANGE FILENAME
         headerspdf = {
             'Content-Type': "application/pdf",
             'Accept': "application/pdf",
             'Filename': self.filename
         }
-        # CHANGE FILENAME
+
         headersxml = {
             'Content-Type': "application/xml",
             'Accept': "application/xml",
@@ -88,9 +92,8 @@ class DBProcessor(object):
                 print("PDF invoice sent")
 
     def translatetoxml(self, invoicejson):
-        self.companyrouting(invoicejson)
-
         # Get company code and filename from JSON
+        self.companyrouting(invoicejson)
         self.filename = invoicejson['invoice']['ScanTIFF'][:-4]
 
         # Translate to output JSON
