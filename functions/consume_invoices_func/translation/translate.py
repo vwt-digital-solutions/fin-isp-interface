@@ -42,9 +42,9 @@ def getjsonval(injson, path):
         else:
             return getjsonval(injson[nextpathname], path[1:])
     else:
-        try:
+        if nextpathname in injson:
             return injson[nextpathname]
-        except KeyError:
+        else:
             return 'Not part of JSON Invoice'
 
 
