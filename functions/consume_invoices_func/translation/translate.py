@@ -1,15 +1,13 @@
 import json
 import xmltodict
+import logging
 
 
 def translatejson(inputjson, dictionary):
-    if type(inputjson) is dict and dictionary.endswith('.json'):
-        translationjson = getobj(dictionary)
-        getjsonpath(inputjson, translationjson)
+    translationjson = getobj(dictionary)
+    getjsonpath(inputjson, translationjson)
 
-        return translationjson
-    else:
-        print("Not JSON format")
+    return translationjson
 
 
 # Get paths from JSON with paths
@@ -42,9 +40,9 @@ def getjsonval(injson, path):
         else:
             return getjsonval(injson[nextpathname], path[1:])
     else:
-        if nextpathname in injson:
+        try:
             return injson[nextpathname]
-        else:
+        except KeyError:
             return 'Not part of JSON Invoice'
 
 
@@ -64,7 +62,7 @@ def translatexmljson(file):
                 return xmltojson(temp)
 
     else:
-        print('Format not supported')
+        logging.info('Format not supported')
 
 
 # JSON to XML
