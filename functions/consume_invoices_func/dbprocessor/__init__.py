@@ -5,7 +5,7 @@ import xml.etree.cElementTree as ET
 
 from translation import translate
 from google.cloud import kms_v1
-
+from fpdf import FPDF
 from OpenSSL import crypto
 
 
@@ -21,14 +21,15 @@ class DBProcessor(object):
         xml = self.translatetoxml(payload)
 
         # Same name for XML and PDF
-        pdf_file = self.filename + ".pdf"
-        xml_file = f"/tmp/{self.filename}" + ".xml"
+        pdf_file = f"/tmp/{self.filename}.pdf"
+        xml_file = f"/tmp/{self.filename}.xml"
 
         # DUMMY PDF FILE: RENAME TO CURRENT FILENAME
-        for files in os.listdir("."):
-            if files.endswith(".pdf"):
-                os.rename(files, pdf_file)
-
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="DUMMY PDF", ln=1, align="C")
+        pdf.output(pdf_file)
         client = kms_v1.KeyManagementServiceClient()
 
         # Get the passphrase for the private key
