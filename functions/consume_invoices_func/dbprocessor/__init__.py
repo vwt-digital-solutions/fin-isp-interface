@@ -20,6 +20,7 @@ class DBProcessor(object):
 
     def process(self, payload):
         xml = self.translatetoxml(payload)
+        print(xml)
 
         # Same name for XML and PDF
         xml_file = f"/tmp/{self.filename}.xml"
