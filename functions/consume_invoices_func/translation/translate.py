@@ -3,11 +3,11 @@ import xmltodict
 import logging
 
 
-def translatejson(inputjson, dictionary):
-    translationjson = getobj(dictionary)
-    getjsonpath(inputjson, translationjson)
+def translatejson(input_json, dictionary):
+    translation_json = getobj(dictionary)
+    getjsonpath(input_json, translation_json)
 
-    return translationjson
+    return translation_json
 
 
 # Get paths from JSON with paths
@@ -19,15 +19,15 @@ def getobj(filename):
 
 
 # Recursively find path in translation JSON
-def getjsonpath(inputjson, translationjson):
-    for key, value in translationjson.items():
+def getjsonpath(input_json, translation_json):
+    for key, value in translation_json.items():
         if type(value) is dict:
-            getjsonpath(inputjson, translationjson[key])
+            getjsonpath(input_json, translation_json[key])
             continue
         else:
-            valueforpath = getjsonval(inputjson, translationjson[key].split('/'))
+            valueforpath = getjsonval(input_json, translation_json[key].split('/'))
             if valueforpath != 'Not part of JSON Invoice':
-                translationjson[key] = valueforpath
+                translation_json[key] = valueforpath
 
 
 # Recursively find value in input JSON
@@ -47,33 +47,33 @@ def getjsonval(injson, path):
 
 
 # Automatically translate xml to json or json to xml
-def translatexmljson(file):
+def translate_xml_json(file):
 
     if type(file) is dict:
-        return jsontoxml(file)
+        return json_to_xml(file)
 
     elif type(file) is str:
         with open(file) as temp:
             if file.endswith('.json'):
                 jsonobj = json.load(temp)
-                return jsontoxml(jsonobj)
+                return json_to_xml(jsonobj)
 
             elif file.endswith('.xml'):
-                return xmltojson(temp)
+                return xml_to_json(temp)
 
     else:
         logging.info('Format not supported')
 
 
 # JSON to XML
-def jsontoxml(filename):
+def json_to_xml(filename):
     xmlobj = xmltodict.unparse(filename)
 
     return xmlobj
 
 
 # XML to JSON
-def xmltojson(filename):
+def xml_to_json(filename):
     jsonobj = xmltodict.parse(filename.read())
 
     return json.dumps(jsonobj)

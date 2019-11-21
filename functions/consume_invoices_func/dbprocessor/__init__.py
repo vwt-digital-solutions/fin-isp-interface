@@ -106,26 +106,26 @@ class DBProcessor(object):
         outputjson = translate.translatejson(invoicejson, 'translation.json')
 
         # Translate to XML for ISP
-        return translate.translatexmljson(outputjson)
+        return translate.translate_xml_json(outputjson)
 
     # Get hostname for corresponding company
     def companyrouting(self, invoicejson):
         # Company code
-        self.companycode = invoicejson['invoice']['CompCodeFin']
+        self.companycode = invoicejson['invoice']['company_id']
 
         # Make URL from dictionary in config
         self.url = config.HOSTNAME_TEST + config.URLS[self.companycode]
 
     def buildfilename(self, invoicejson):
         # Get bucketname for PDF file and general filename for both XML and PDF
-        if 'stg' in invoicejson['invoice']['ScanTIFF']:
-            partnames = invoicejson['invoice']['ScanTIFF'][:-4].split('/')
+        if 'stg' in invoicejson['invoice']['pdf_file']:
+            partnames = invoicejson['invoice']['pdf_file'][:-4].split('/')
 
             self.bucket_name = partnames[2]
             self.filename = partnames[-2] + partnames[-1]
 
-            self.pdf_file = invoicejson['invoice']['ScanTIFF'].split(f"{self.bucket_name}/")[1]
+            self.pdf_file = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name}/")[1]
 
-            invoicejson['invoice']['ScanTIFF'] = self.filename
+            invoicejson['invoice']['pdf_file'] = self.filename
         else:
             print("PDF not in bucket")
