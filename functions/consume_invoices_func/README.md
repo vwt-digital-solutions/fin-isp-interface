@@ -1,5 +1,5 @@
-# Consume invoices (JSON to XML)
-This function converts a JSON invoice to XML, and posts it to a server. This function is the last step in a chain of functions and is intended to react to messages posted on a Pub/Sub Topic that has the structure as [written below](#ncoming-message)
+# JSON to XML
+This function converts a JSON to XML, and posts it to a server. This function is the last step in a chain of functions and is intended to react to messages posted on a Pub/Sub Topic that has the structure as [written below](#ncoming-message)
 
 To use this function both a ```config.py``` file (see [config.example.py](config/config.example.py) for an example) and a ```translation.json``` file (see [translation.example.json](config/translation.example.json) for an example) need to be defined to which configuration will be used.
 
