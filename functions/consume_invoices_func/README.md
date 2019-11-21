@@ -1,5 +1,5 @@
-# JSON to XML to server
-This function converts a JSON to XML, and posts it to a server. This function is the last step in a chain of functions and is intended to react to messages posted on a Pub/Sub Topic that has the structure as [written below](#Incoming message)
+# Consume invoices (JSON to XML)
+This function converts a JSON invoice to XML, and posts it to a server. This function is the last step in a chain of functions and is intended to react to messages posted on a Pub/Sub Topic that has the structure as [written below](#ncoming-message)
 
 To use this function both a ```config.py``` file (see [config.example.py](config/config.example.py) for an example) and a ```translation.json``` file (see [translation.example.json](config/translation.example.json) for an example) need to be defined to which configuration will be used.
 
@@ -14,14 +14,14 @@ To use this function both a ```config.py``` file (see [config.example.py](config
 
 3. Make sure a correct ```translation.json``` is within the ```dbprocessor``` directory. This will be used to coordinate the placement of the JSON values in the XML
 5. Deploy the function to GCP as a HTTP triggered function as shown in the [cloudbuild.example.yaml](cloudbuild.example.yaml)
-5. Make sure a Pub/Sub topic pushes to the function
+5. Make sure a Pub/Sub Topic pushes to the function
 6. Make sure you are allowed to post to HOSTNAME_TEST via a certificate
 7. Make sure you are allowed to access the GCP bucket where the corresponding PDF is located
 
 ## Function
 The consume-invoices function works as follows:
 1. A message will be received from a Pub/Sub Topic with the [correct structure](#incoming-message),
-2. The function will extract the JSON and loop over ```translation.json``` to transform the JSON structure to a nested XML structure, after which it translates the JSON to XML
+2. The function will extract the JSON and loop over ```translation.json``` to transform the JSON structure to a nested XML structure, after which it translates the JSON to XML. It then ends up with the XML structure as [written below](#outgoing-xml)
 3. Then it will get the PDF from a bucket (location is specified in the JSON object: ```[invoice][pdf_file]```) and ensures the XML file and PDF file have the same name
 4. The files will then be sent to the server via separate post requests (including the certificate needed for security).
 
