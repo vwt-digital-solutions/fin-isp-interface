@@ -41,6 +41,7 @@ def topic_to_xml(request):
     except Exception as e:
         logging.info('Extract of subscription failed')
         logging.debug(e)
+        raise e
 
     # Returning any 2xx status indicates successful receipt of the message.
     # 204: no content, delivery successful, no further actions needed
