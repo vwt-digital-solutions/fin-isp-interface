@@ -30,7 +30,6 @@ def topic_to_xml(request):
     # Extract data from request
     envelope = json.loads(request.data.decode('utf-8'))
     payload = base64.b64decode(envelope['message']['data'])
-    print("Published on: " + envelope['message']['publishTime'])
 
     # Extract subscription from subscription string
     try:
