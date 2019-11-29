@@ -1,7 +1,6 @@
 import requests
 import os
 import config
-import xml.etree.cElementTree as ET
 
 from translation import translate
 from google.cloud import kms_v1, storage
@@ -20,10 +19,8 @@ class DBProcessor(object):
 
     def process(self, payload):
         xml = self.translatetoxml(payload)
-        print(xml)
 
         # Same name for XML and PDF
-        xml_file = f"/tmp/{self.filename}.xml"
         pdf_file_end = f"/tmp/{self.filename}.pdf"
         # Getting names from uri path
 
@@ -33,15 +30,8 @@ class DBProcessor(object):
         blob = bucket.get_blob(self.pdf_file)
         blob.download_to_filename(pdf_file_end)
 
-        # Write XML to file
-        tree = ET.ElementTree(ET.fromstring(xml))
-        tree.write(xml_file, encoding='utf8', xml_declaration=True, method='xml')
-
         # Prepare PDF and XML for sending
         pdf = {'pdf': (self.filename, open(pdf_file_end, 'rb'))}
-        with open(xml_file) as xmlfi:
-            xmldata = xmlfi.read()
-
         headerspdf = {
             'Content-Type': "application/pdf",
             'Accept': "application/pdf",
@@ -58,7 +48,7 @@ class DBProcessor(object):
         cert = self.getcertificate()
 
         # Posting XML data and PDF file to server in separate requests
-        rxml = requests.post(self.url, headers=headersxml, data=xmldata, cert=cert, verify=True)
+        rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
         if not rxml.ok:
             print("Failed to upload XML invoice")
         else:
