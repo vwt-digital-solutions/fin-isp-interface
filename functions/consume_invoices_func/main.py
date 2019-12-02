@@ -30,7 +30,6 @@ def topic_to_xml(request):
     # Extract data from request
     envelope = json.loads(request.data.decode('utf-8'))
     payload = base64.b64decode(envelope['message']['data'])
-    print("Published on: " + envelope['message']['publishTime'])
 
     # Extract subscription from subscription string
     try:
@@ -42,6 +41,7 @@ def topic_to_xml(request):
     except Exception as e:
         logging.info('Extract of subscription failed')
         logging.debug(e)
+        raise e
 
     # Returning any 2xx status indicates successful receipt of the message.
     # 204: no content, delivery successful, no further actions needed
