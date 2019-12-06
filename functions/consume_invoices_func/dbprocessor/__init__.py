@@ -1,6 +1,7 @@
 import requests
 import os
 import config
+import logging
 
 from translation import translate
 from google.cloud import kms_v1, storage
@@ -13,6 +14,7 @@ class DBProcessor(object):
     filename = 'Not specified'
     pdf_file = 'Not specified'
     bucket_name = 'Not specified'
+    invoice_number = 'Not specified'
 
     def __init__(self):
         pass
@@ -50,15 +52,18 @@ class DBProcessor(object):
         # Posting XML data and PDF file to server in separate requests
         rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
         if not rxml.ok:
-            print("Failed to upload XML invoice")
+            logging.info("[{}] Failed to upload XML invoice".format(
+                self.invoice_number))
         else:
-            print("XML invoice sent")
+            logging.info("[{}] XML invoice sent".format(self.invoice_number))
 
             rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
             if not rpdf.ok:
-                print("Failed to upload PDF invoice file")
+                logging.info("[{}] Failed to upload PDF invoice file".format(
+                    self.invoice_number))
             else:
-                print("PDF invoice sent")
+                logging.info("[{}] PDF invoice sent".format(
+                    self.invoice_number))
 
     def getcertificate(self):
         client = kms_v1.KeyManagementServiceClient()
@@ -90,6 +95,7 @@ class DBProcessor(object):
 
     def translatetoxml(self, invoicejson):
         # Get company code and filename from JSON
+        self.invoice_number = invoicejson['invoice']['invoice_number']
         self.buildfilename(invoicejson)
         self.companyrouting(invoicejson)
 
@@ -119,4 +125,4 @@ class DBProcessor(object):
 
             invoicejson['invoice']['pdf_file'] = self.filename
         else:
-            print("PDF not in bucket")
+            logging.info("[{}] PDF not in bucket".format(self.invoice_number))
