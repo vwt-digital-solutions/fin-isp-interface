@@ -1,0 +1,3 @@
+E2E_STORAGE_BUCKET_PROJECT_ID = "project-id"
+E2E_STORAGE_BUCKET_NAME = "bucket-name"
+E2E_STORAGE_BUCKET_FOLDER = "folder-name"

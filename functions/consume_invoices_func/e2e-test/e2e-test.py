@@ -1,12 +1,34 @@
+import config
 import datetime
 import logging
 import sys
+import json
 
-import google.cloud.logging as cloud_logging
+from google.cloud import storage, logging as cloud_logging
 
 PROJECT_ID = sys.argv[1]
 BUILD_ID = sys.argv[2]
 FUNCTION_NAME = sys.argv[3]
+
+
+def provide_files():
+    st_client = storage.Client(project=config.E2E_STORAGE_BUCKET_PROJECT_ID)
+    bucket = st_client.bucket(config.E2E_STORAGE_BUCKET_NAME)
+
+    filename = '{}/e2e-test/e2e_test.pdf'.format(
+        config.E2E_STORAGE_BUCKET_FOLDER)
+    blob_exists = storage.Blob(bucket=bucket,
+                               name=filename).exists(st_client)
+    if not blob_exists:
+        blob = bucket.blob(filename)
+        with open("assets/e2e_test.pdf", "rb") as my_file:
+            blob.upload_from_file(my_file,
+                                  content_type='application/pdf')
+        logging.info('Uploaded E2E-PDF to bucket {}'.format(
+            config.E2E_STORAGE_BUCKET_NAME))
+    else:
+        logging.info('E2E-PDF exists in bucket {}'.format(
+            config.E2E_STORAGE_BUCKET_NAME))
 
 
 def get_log_entries():
@@ -41,6 +63,7 @@ if __name__ == '__main__':
 
     try:
         get_log_entries()
+        provide_files()
     except TimeoutError as e:
         logging.error(
             'An exception occurred: {}.'.format(e))
