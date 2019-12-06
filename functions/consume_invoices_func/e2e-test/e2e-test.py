@@ -78,7 +78,6 @@ def request_log(cloud_logger, unique_id):
                  "AND timestamp >= \"{}\" ".format(cur_timestamp) + \
                  "AND textPayload: \"[{}]\"".format(unique_id)
 
-    logging.info(log_filter)
     entries = cloud_logger.list_entries(
         filter_=log_filter, order_by=cloud_logging.DESCENDING,
         projects=[PROJECT_ID])
