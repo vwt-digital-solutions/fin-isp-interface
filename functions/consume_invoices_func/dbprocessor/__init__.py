@@ -24,7 +24,6 @@ class DBProcessor(object):
 
         # Same name for XML and PDF
         pdf_file_end = f"/tmp/{self.filename}.pdf"
-        # Getting names from uri path
 
         # Retrieving PDF file from bucket
         client = storage.Client()
@@ -93,25 +92,25 @@ class DBProcessor(object):
 
         return cert_file_path, key_file_path
 
-    def translatetoxml(self, invoicejson):
+    def translatetoxml(self, invoice_json):
         # Get company code and filename from JSON
-        self.invoice_number = invoicejson['invoice']['invoice_number']
-        self.buildfilename(invoicejson)
-        self.companyrouting(invoicejson)
+        self.invoice_number = invoice_json['invoice']['invoice_number']
+        self.buildfilename(invoice_json)
+        self.companyrouting(invoice_json)
 
         # Translate to output JSON
-        outputjson = translate.translatejson(invoicejson, 'translation.json')
+        outputjson = translate.translatejson(invoice_json, 'translation.json')
 
         # Translate to XML for ISP
         return translate.translate_xml_json(outputjson)
 
     # Get hostname for corresponding company
-    def companyrouting(self, invoicejson):
+    def companyrouting(self, invoice_json):
         # Company code
-        self.companycode = invoicejson['invoice']['company_id']
+        self.companycode = invoice_json['invoice']['company_id']
 
         # Make URL from dictionary in config
-        self.url = config.HOSTNAME_TEST + config.URLS[self.companycode]
+        self.url = config.HOSTNAME + invoice_json['invoice']['url_extension']
 
     def buildfilename(self, invoicejson):
         # Get bucketname for PDF file and general filename for both XML and PDF
