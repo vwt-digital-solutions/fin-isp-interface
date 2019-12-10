@@ -1,6 +1,7 @@
 import requests
 import os
 import config
+import logging
 
 from translation import translate
 from google.cloud import kms_v1, storage
@@ -13,6 +14,7 @@ class DBProcessor(object):
     filename = 'Not specified'
     pdf_file = 'Not specified'
     bucket_name = 'Not specified'
+    invoice_number = 'Not specified'
 
     def __init__(self):
         pass
@@ -22,7 +24,6 @@ class DBProcessor(object):
 
         # Same name for XML and PDF
         pdf_file_end = f"/tmp/{self.filename}.pdf"
-        # Getting names from uri path
 
         # Retrieving PDF file from bucket
         client = storage.Client()
@@ -50,15 +51,18 @@ class DBProcessor(object):
         # Posting XML data and PDF file to server in separate requests
         rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
         if not rxml.ok:
-            print("Failed to upload XML invoice")
+            logging.info("[{}] Failed to upload XML invoice".format(
+                self.invoice_number))
         else:
-            print("XML invoice sent")
+            logging.info("[{}] XML invoice sent".format(self.invoice_number))
 
             rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
             if not rpdf.ok:
-                print("Failed to upload PDF invoice file")
+                logging.info("[{}] Failed to upload PDF invoice file".format(
+                    self.invoice_number))
             else:
-                print("PDF invoice sent")
+                logging.info("[{}] PDF invoice sent".format(
+                    self.invoice_number))
 
     def getcertificate(self):
         client = kms_v1.KeyManagementServiceClient()
@@ -88,24 +92,25 @@ class DBProcessor(object):
 
         return cert_file_path, key_file_path
 
-    def translatetoxml(self, invoicejson):
+    def translatetoxml(self, invoice_json):
         # Get company code and filename from JSON
-        self.buildfilename(invoicejson)
-        self.companyrouting(invoicejson)
+        self.invoice_number = invoice_json['invoice']['invoice_number']
+        self.buildfilename(invoice_json)
+        self.companyrouting(invoice_json)
 
         # Translate to output JSON
-        outputjson = translate.translatejson(invoicejson, 'translation.json')
+        outputjson = translate.translatejson(invoice_json, 'translation.json')
 
         # Translate to XML for ISP
         return translate.translate_xml_json(outputjson)
 
     # Get hostname for corresponding company
-    def companyrouting(self, invoicejson):
+    def companyrouting(self, invoice_json):
         # Company code
-        self.companycode = invoicejson['invoice']['company_id']
+        self.companycode = invoice_json['invoice']['company_id']
 
         # Make URL from dictionary in config
-        self.url = config.HOSTNAME_TEST + config.URLS[self.companycode]
+        self.url = config.HOSTNAME + invoice_json['invoice']['url_extension']
 
     def buildfilename(self, invoicejson):
         # Get bucketname for PDF file and general filename for both XML and PDF
@@ -119,4 +124,4 @@ class DBProcessor(object):
 
             invoicejson['invoice']['pdf_file'] = self.filename
         else:
-            print("PDF not in bucket")
+            logging.info("[{}] PDF not in bucket".format(self.invoice_number))

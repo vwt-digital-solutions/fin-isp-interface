@@ -1,0 +1,47 @@
+{
+  "gobits": [
+    {
+      "gcp_project": "",
+      "execution_id": "",
+      "execution_type": "cloud_builder",
+      "execution_name": "",
+      "execution_trigger_type": "CLOUD_BUILDER",
+      "timestamp": ""
+    }
+  ],
+  "invoice": {
+    "invoice_number": "",
+    "invoice_date": "2019-12-03",
+    "note_tax": "Btw verlegd",
+    "currency_total_amount": "EUR",
+    "total_amount": "1200",
+    "invoice_type": "Debit",
+    "currency_total_charges": "EUR",
+    "total_charges": "1200",
+    "currency_total_tax": "EUR",
+    "percentage_total_tax": "0.00",
+    "shifted_total_tax": false,
+    "total_tax": "0.00",
+    "company_id": "200",
+    "company_name": "VolkerWessels Telecom B.V.",
+    "company_tax_id": "NL987654321B01",
+    "company_street": "Postbus 551",
+    "company_city": "Amersfoort",
+    "company_postal": "3800 AN",
+    "vendor_id": "999999",
+    "vendor_name": "E2E-test invoice",
+    "vendor_tax_id": "NL123456789B01",
+    "vendor_bank_account": "NL12ABCD0001234567",
+    "vendor_kvk": "12345678",
+    "vendor_street": "Modemweg 33",
+    "vendor_city": "Amersfoort",
+    "vendor_postal": "3821 BS",
+    "order_number": "200-123456",
+    "payment_date_from": "2019-12-01",
+    "payment_date_to": "2019-12-31",
+    "process_date": "",
+    "pdf_file": "gs://BUCKET/FOLDER/e2e-test/e2e_test.pdf",
+    "additional_coding": "No",
+    "url_extension": "Nb01Xml"
+  }
+}
