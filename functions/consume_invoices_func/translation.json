@@ -17,7 +17,7 @@
        "TotalTax": {
          "@currency": "invoice/currency_total_tax",
          "@percentquantity": "invoice/percentage_total_tax",
-         "@taxshifted": "invoice/shifted_total_tax",
+         "@taxshifted": "invoice/tax_shifted",
          "#text": "invoice/total_tax"
        }
      },
