@@ -3,7 +3,7 @@
    "Header": {
      "InvoiceNumber":"invoice/invoice_number",
      "InvoiceDate":"invoice/invoice_date",
-     "Note": "invoice/note_tax",
+     "Note": "invoice/note",
      "TotalAmount": {
        "@currency": "invoice/currency_total_amount",
        "#text": "invoice/total_amount"
