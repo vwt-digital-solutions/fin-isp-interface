@@ -3,7 +3,7 @@
    "Header": {
      "InvoiceNumber":"invoice/invoice_number",
      "InvoiceDate":"invoice/invoice_date",
-     "Note": "invoice/note_tax",
+     "Note": "invoice/note",
      "TotalAmount": {
        "@currency": "invoice/currency_total_amount",
        "#text": "invoice/total_amount"
@@ -17,7 +17,7 @@
        "TotalTax": {
          "@currency": "invoice/currency_total_tax",
          "@percentquantity": "invoice/percentage_total_tax",
-         "@taxshifted": "invoice/shifted_total_tax",
+         "@taxshifted": "invoice/tax_shifted",
          "#text": "invoice/total_tax"
        }
      },
