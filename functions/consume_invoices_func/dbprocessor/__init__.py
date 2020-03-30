@@ -2,47 +2,50 @@ import requests
 import os
 import config
 import logging
-
+import tempfile
+from PyPDF2 import PdfFileReader, PdfFileWriter
 from translation import translate
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
 
 
 class DBProcessor(object):
-    companycode = 'Not specified'
-    url = 'Not specified'
-    filename = 'Not specified'
-    pdf_file = 'Not specified'
-    bucket_name = 'Not specified'
-    invoice_number = 'Not specified'
+
+    file_name_merged = "merged.pdf"
 
     def __init__(self):
+        self.companycode = ''
+        self.url = ''
+        self.file_name = ''
+        self.base_path = ''
+        self.bucket_name = ''
+        self.invoice_number = ''
+        self.client = storage.Client()
         pass
 
     def process(self, payload):
         xml = self.translatetoxml(payload)
+        pdf_name = self.merge_pdf_files()
 
-        # Same name for XML and PDF
-        pdf_file_end = f"/tmp/{self.filename}.pdf"
+        pdf_file_tmp = f"/tmp/{self.file_name}.pdf"
 
         # Retrieving PDF file from bucket
-        client = storage.Client()
-        bucket = client.get_bucket(self.bucket_name)
-        blob = bucket.get_blob(self.pdf_file)
-        blob.download_to_filename(pdf_file_end)
+        bucket = self.client.get_bucket(self.bucket_name)
+        blob = bucket.get_blob(self.base_path + pdf_name)
+        blob.download_to_filename(pdf_file_tmp)
 
         # Prepare PDF and XML for sending
-        pdf = {'pdf': (self.filename, open(pdf_file_end, 'rb'))}
+        pdf = {'pdf': (self.file_name, open(pdf_file_tmp, 'rb'))}
         headerspdf = {
             'Content-Type': "application/pdf",
             'Accept': "application/pdf",
-            'Filename': self.filename
+            'Filename': self.file_name
         }
 
         headersxml = {
             'Content-Type': "application/xml",
             'Accept': "application/xml",
-            'Filename': self.filename
+            'Filename': self.file_name
         }
 
         # Key and certificate for request
@@ -63,6 +66,46 @@ class DBProcessor(object):
             else:
                 logging.info("[{}] PDF invoice sent".format(
                     self.invoice_number))
+
+    def merge_pdf_files(self):
+        bucket = self.client.get_bucket(self.bucket_name)
+        blobs = self.client.list_blobs(self.bucket_name, prefix=self.base_path)
+
+        pdf_files = []
+        for blob in blobs:
+            if blob.name.endswith('.pdf'):
+                if blob.name != self.file_name:
+                    pdf_files.append(blob)
+                else:
+                    pdf_files = [blob] + pdf_files
+
+        if len(pdf_files) == 1:
+            return self.file_name
+
+        writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
+        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as merged_pdf:
+            for pdf in pdf_files:
+                content_as_string = pdf.download_as_string()
+
+                # Write PDF content to tempfile so we can read and add all pages to merged PDF
+                with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as pdf_merge:
+                    pdf_merge.write(content_as_string)
+                    pdf_merge.close()
+                    reader = PdfFileReader(open(pdf_merge.name, 'rb'))
+                    [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
+
+            writer.write(merged_pdf)
+
+        merged_pdf.close()
+        content = open(merged_pdf.name, 'rb').read()  # Read the content from the temp file
+
+        blob = bucket.blob(f"{self.base_path}{self.file_name_merged}.pdf")
+        blob.upload_from_string(
+                content,  # Upload content
+                content_type="application/pdf"
+            )
+
+        return self.file_name_merged
 
     def getcertificate(self):
         client = kms_v1.KeyManagementServiceClient()
@@ -115,13 +158,14 @@ class DBProcessor(object):
     def buildfilename(self, invoicejson):
         # Get bucketname for PDF file and general filename for both XML and PDF
         if 'stg' in invoicejson['invoice']['pdf_file']:
+
             partnames = invoicejson['invoice']['pdf_file'][:-4].split('/')
 
             self.bucket_name = partnames[2]
-            self.filename = partnames[-2] + partnames[-1]
-
+            self.file_name = partnames[-1]
             self.pdf_file = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name}/")[1]
+            self.base_path = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name}/")[1].split(f"{self.file_name}")[0]
 
-            invoicejson['invoice']['pdf_file'] = self.filename
+            invoicejson['invoice']['pdf_file'] = self.file_name
         else:
             logging.info("[{}] PDF not in bucket".format(self.invoice_number))
