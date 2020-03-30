@@ -11,7 +11,7 @@ from OpenSSL import crypto
 
 class DBProcessor(object):
 
-    file_name_merged = "merged.pdf"
+    file_name_merged = "merged"
 
     def __init__(self):
         self.companycode = ''
@@ -31,7 +31,7 @@ class DBProcessor(object):
 
         # Retrieving PDF file from bucket
         bucket = self.client.get_bucket(self.bucket_name)
-        blob = bucket.get_blob(self.base_path + pdf_name)
+        blob = bucket.get_blob(f"{self.base_path}{pdf_name}.pdf")
         blob.download_to_filename(pdf_file_tmp)
 
         # Prepare PDF and XML for sending
@@ -93,6 +93,8 @@ class DBProcessor(object):
                     pdf_merge.close()
                     reader = PdfFileReader(open(pdf_merge.name, 'rb'))
                     [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
+
+                logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
 
             writer.write(merged_pdf)
 
