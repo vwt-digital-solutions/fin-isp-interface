@@ -33,7 +33,7 @@ class DBProcessor(object):
         pdf_file_tmp = f"/tmp/{self.file_name}.pdf"
 
         # Retrieving PDF file from bucket
-        bucket_isp = self.client.get_bucket(self.bucket_isp)
+        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
         blob = bucket_isp.get_blob(f"{self.base_path}{self.file_name}.pdf")
         blob.download_to_filename(pdf_file_tmp)
 
