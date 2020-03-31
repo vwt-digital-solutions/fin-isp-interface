@@ -11,27 +11,30 @@ from OpenSSL import crypto
 
 class DBProcessor(object):
 
-    file_name_merged = "merged"
-
     def __init__(self):
         self.companycode = ''
         self.url = ''
         self.file_name = ''
         self.base_path = ''
-        self.bucket_name = ''
+        self.bucket_name_einvoices = ''
+        self.bucket_name_isp = config.BUCKET_NAME
         self.invoice_number = ''
+        self.file_path_merged = ''
         self.client = storage.Client()
         pass
 
     def process(self, payload):
         xml = self.translatetoxml(payload)
-        pdf_name = self.merge_pdf_files()
+
+        bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
+        blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
+        self.create_merged_pdf(blobs)
 
         pdf_file_tmp = f"/tmp/{self.file_name}.pdf"
 
         # Retrieving PDF file from bucket
-        bucket = self.client.get_bucket(self.bucket_name)
-        blob = bucket.get_blob(f"{self.base_path}{pdf_name}.pdf")
+        bucket_isp = self.client.get_bucket(self.bucket_isp)
+        blob = bucket_isp.get_blob(f"{self.base_path}{self.file_name}.pdf")
         blob.download_to_filename(pdf_file_tmp)
 
         # Prepare PDF and XML for sending
@@ -67,10 +70,7 @@ class DBProcessor(object):
                 logging.info("[{}] PDF invoice sent".format(
                     self.invoice_number))
 
-    def merge_pdf_files(self):
-        bucket = self.client.get_bucket(self.bucket_name)
-        blobs = self.client.list_blobs(self.bucket_name, prefix=self.base_path)
-
+    def create_merged_pdf(self, blobs):
         pdf_files = []
         for blob in blobs:
             if blob.name.endswith('.pdf'):
@@ -80,9 +80,20 @@ class DBProcessor(object):
                     pdf_files = [blob] + pdf_files
 
         if len(pdf_files) == 1:
-            return self.file_name
+            content = pdf_files[0].download_as_string()
+        else:
+            content = self.merge_pdf_files(pdf_files)
 
+        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
+        blob = bucket_isp.blob(f"{self.base_path}{self.file_name}.pdf")
+        blob.upload_from_string(
+                content,  # Upload content
+                content_type="application/pdf"
+            )
+
+    def merge_pdf_files(self, pdf_files):
         writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
+
         with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as merged_pdf:
             for pdf in pdf_files:
                 content_as_string = pdf.download_as_string()
@@ -99,15 +110,8 @@ class DBProcessor(object):
             writer.write(merged_pdf)
 
         merged_pdf.close()
-        content = open(merged_pdf.name, 'rb').read()  # Read the content from the temp file
 
-        blob = bucket.blob(f"{self.base_path}{self.file_name_merged}.pdf")
-        blob.upload_from_string(
-                content,  # Upload content
-                content_type="application/pdf"
-            )
-
-        return self.file_name_merged
+        return open(merged_pdf.name, 'rb').read()  # Return the content from the temp file
 
     def getcertificate(self):
         client = kms_v1.KeyManagementServiceClient()
@@ -163,10 +167,10 @@ class DBProcessor(object):
 
             partnames = invoicejson['invoice']['pdf_file'][:-4].split('/')
 
-            self.bucket_name = partnames[2]
+            self.bucket_name_einvoices = partnames[2]
             self.file_name = partnames[-1]
-            self.pdf_file = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name}/")[1]
-            self.base_path = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name}/")[1].split(f"{self.file_name}")[0]
+            self.pdf_file = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1]
+            self.base_path = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1].split(f"{self.file_name}")[0]
 
             invoicejson['invoice']['pdf_file'] = self.file_name
         else:
