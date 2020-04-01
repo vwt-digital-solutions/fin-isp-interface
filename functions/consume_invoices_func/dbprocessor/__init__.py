@@ -75,15 +75,16 @@ class DBProcessor(object):
     def create_merged_pdf(self, blobs):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
         pdf_files = []
+
         for blob in blobs:
             if blob.name.endswith('.pdf'):
-                if blob.name != self.file_name:
+                if blob.name != self.pdf_file:
                     pdf_files.append(blob)
                 else:
-                    blob = bucket_isp.blob(f"{self.base_path}{blob.name}.pdf")
+                    blob_presence = bucket_isp.blob(blob.name)
                     pdf_files = [blob] + pdf_files
 
-        if blob.exists():
+        if blob_presence.exists():
             logging.warning("Merged PDF already exists")
             return
 
