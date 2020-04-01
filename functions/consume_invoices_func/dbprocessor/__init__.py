@@ -26,8 +26,10 @@ class DBProcessor(object):
     def process(self, payload):
         xml = self.translatetoxml(payload)
 
+        # Get files from einvoices bucket
         bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
         blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
+
         self.create_merged_pdf(blobs)
 
         pdf_file_tmp = f"/tmp/{self.file_name}.pdf"
@@ -71,21 +73,27 @@ class DBProcessor(object):
                     self.invoice_number))
 
     def create_merged_pdf(self, blobs):
+        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
         pdf_files = []
         for blob in blobs:
             if blob.name.endswith('.pdf'):
                 if blob.name != self.file_name:
                     pdf_files.append(blob)
                 else:
+                    blob = bucket_isp.blob(f"{self.base_path}{blob.name}.pdf")
                     pdf_files = [blob] + pdf_files
+
+        if blob.exists():
+            logging.warning("Merged PDF already exists")
+            return
 
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
         else:
             content = self.merge_pdf_files(pdf_files)
 
-        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
         blob = bucket_isp.blob(f"{self.base_path}{self.file_name}.pdf")
+
         blob.upload_from_string(
                 content,  # Upload content
                 content_type="application/pdf"
