@@ -99,6 +99,7 @@ class DBProcessor(object):
                 content,  # Upload content
                 content_type="application/pdf"
             )
+        logging.info(f"Merged file uploaded to storage: {self.file_name}.pdf")
 
     def merge_pdf_files(self, pdf_files):
         writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
