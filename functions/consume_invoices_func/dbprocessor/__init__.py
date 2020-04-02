@@ -20,6 +20,7 @@ class DBProcessor(object):
         self.bucket_name_isp = config.BUCKET_NAME
         self.invoice_number = ''
         self.file_path_merged = ''
+        self.merged_pdf = None
         self.client = storage.Client()
         pass
 
@@ -32,15 +33,15 @@ class DBProcessor(object):
 
         self.create_merged_pdf(blobs)
 
-        pdf_file_tmp = f"/tmp/{self.file_name}.pdf"
+        if not self.merged_pdf:
+            # Retrieving PDF file from bucket
+            self.merged_pdf = tempfile.NamedTemporaryFile(mode='w+b')
+            bucket_isp = self.client.get_bucket(self.bucket_name_isp)
+            blob = bucket_isp.get_blob(f"{self.base_path}{self.file_name}.pdf")
+            blob.download_to_filename(self.merged_pdf.name)
 
-        # Retrieving PDF file from bucket
-        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
-        blob = bucket_isp.get_blob(f"{self.base_path}{self.file_name}.pdf")
-        blob.download_to_filename(pdf_file_tmp)
-
-        # Prepare PDF and XML for sending
-        pdf = {'pdf': (self.file_name, open(pdf_file_tmp, 'rb'))}
+        logging.info("Prepare XML and PDF for sending")
+        pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
         headerspdf = {
             'Content-Type': "application/pdf",
             'Accept': "application/pdf",
@@ -56,6 +57,7 @@ class DBProcessor(object):
         # Key and certificate for request
         cert = self.getcertificate()
 
+        logging.info("Send XML and PDF to ISP")
         # Posting XML data and PDF file to server in separate requests
         rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
         if not rxml.ok:
@@ -71,6 +73,8 @@ class DBProcessor(object):
             else:
                 logging.info("[{}] PDF invoice sent".format(
                     self.invoice_number))
+
+        self.merged_pdf.close()
 
     def create_merged_pdf(self, blobs):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
@@ -103,25 +107,24 @@ class DBProcessor(object):
 
     def merge_pdf_files(self, pdf_files):
         writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
+        self.merged_pdf = tempfile.NamedTemporaryFile(mode='w+b')
 
-        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as merged_pdf:
-            for pdf in pdf_files:
-                content_as_string = pdf.download_as_string()
+        for pdf in pdf_files:
+            content_as_string = pdf.download_as_string()
 
-                # Write PDF content to tempfile so we can read and add all pages to merged PDF
-                with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as pdf_merge:
-                    pdf_merge.write(content_as_string)
-                    pdf_merge.close()
-                    reader = PdfFileReader(open(pdf_merge.name, 'rb'))
-                    [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
+            # Write PDF content to tempfile so we can read and add all pages to merged PDF
+            with tempfile.NamedTemporaryFile(mode='w+b') as pdf_merge:
+                pdf_merge.write(content_as_string)
+                reader = PdfFileReader(open(pdf_merge.name, 'rb'))
+                [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
+                pdf_merge.close()
 
-                logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
+            logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
 
-            writer.write(merged_pdf)
+        writer.write(self.merged_pdf)
+        content = self.merged_pdf.read()
 
-        merged_pdf.close()
-
-        return open(merged_pdf.name, 'rb').read()  # Return the content from the temp file
+        return content  # Return the content from the temp file
 
     def getcertificate(self):
         client = kms_v1.KeyManagementServiceClient()
