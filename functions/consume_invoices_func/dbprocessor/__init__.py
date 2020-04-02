@@ -33,13 +33,6 @@ class DBProcessor(object):
 
         self.create_merged_pdf(blobs)
 
-        if not self.merged_pdf:
-            # Retrieving PDF file from bucket
-            self.merged_pdf = tempfile.NamedTemporaryFile(mode='w+b')
-            bucket_isp = self.client.get_bucket(self.bucket_name_isp)
-            blob = bucket_isp.get_blob(f"{self.base_path}{self.file_name}.pdf")
-            blob.download_to_filename(self.merged_pdf.name)
-
         logging.info("Prepare XML and PDF for sending")
         pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
         headerspdf = {
@@ -74,7 +67,9 @@ class DBProcessor(object):
                 logging.info("[{}] PDF invoice sent".format(
                     self.invoice_number))
 
+        # Remove (content) temp file
         self.merged_pdf.close()
+        os.unlink(self.merged_pdf.name)
 
     def create_merged_pdf(self, blobs):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
@@ -90,7 +85,6 @@ class DBProcessor(object):
 
         if blob_presence.exists():
             logging.warning("Merged PDF already exists")
-            return
 
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
@@ -107,22 +101,20 @@ class DBProcessor(object):
 
     def merge_pdf_files(self, pdf_files):
         writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
-        self.merged_pdf = tempfile.NamedTemporaryFile(mode='w+b')
 
-        for pdf in pdf_files:
-            content_as_string = pdf.download_as_string()
+        with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as self.merged_pdf:
+            for pdf in pdf_files:
+                content_as_string = pdf.download_as_string()
+                # Write PDF content to tempfile so we can read and add all pages to merged PDF
+                with tempfile.NamedTemporaryFile(mode='w+b') as pdf_merge:
+                    pdf_merge.write(content_as_string)
+                    reader = PdfFileReader(pdf_merge.name)
+                    [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
 
-            # Write PDF content to tempfile so we can read and add all pages to merged PDF
-            with tempfile.NamedTemporaryFile(mode='w+b') as pdf_merge:
-                pdf_merge.write(content_as_string)
-                reader = PdfFileReader(open(pdf_merge.name, 'rb'))
-                [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
-                pdf_merge.close()
-
+            writer.write(self.merged_pdf)
             logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
 
-        writer.write(self.merged_pdf)
-        content = self.merged_pdf.read()
+        content = open(self.merged_pdf.name, 'rb').read()
 
         return content  # Return the content from the temp file
 
