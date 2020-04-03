@@ -88,6 +88,8 @@ class DBProcessor(object):
 
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
+            with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as self.merged_pdf:
+                self.merged_pdf.write(content)
         else:
             content = self.merge_pdf_files(pdf_files)
 
