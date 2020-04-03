@@ -112,9 +112,9 @@ class DBProcessor(object):
                     pdf_merge.write(content_as_string)
                     reader = PdfFileReader(pdf_merge.name)
                     [writer.addPage(reader.getPage(i)) for i in range(0, reader.getNumPages())]  # Add pages
+                    logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
 
             writer.write(self.merged_pdf)
-            logging.info(f"Merged file: {pdf.name.split('/')[-1]}")
 
         content = open(self.merged_pdf.name, 'rb').read()
 
