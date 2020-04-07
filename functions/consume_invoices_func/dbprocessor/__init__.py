@@ -92,7 +92,7 @@ class DBProcessor(object):
                     pdf_files = [blob] + pdf_files
 
         # Don't handle message twice if files have been merged recently
-        if blob_presence.exists():
+        if blob_presence is not None:
             logging.warning("Merged PDF already exists")
             time_difference = datetime.now(timezone.utc) - blob_presence.updated
             if time_difference < timedelta(minutes=1):
