@@ -3,11 +3,11 @@ import os
 import config
 import logging
 import tempfile
-import format_error
 
+from . import format_error
+from translation import translate
 from datetime import datetime, timezone, timedelta
 from PyPDF2 import PdfFileReader, PdfFileWriter
-from translation import translate
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
 
