@@ -3,10 +3,15 @@ import os
 import config
 import logging
 import tempfile
+import format_error
+
+from datetime import datetime, timezone, timedelta
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from translation import translate
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
+
+FormatError = format_error.FormatError
 
 
 class DBProcessor(object):
@@ -25,13 +30,16 @@ class DBProcessor(object):
         pass
 
     def process(self, payload):
-        xml = self.translatetoxml(payload)
+        xml = self.translate_to_xml(payload)
 
         # Get files from einvoices bucket
         bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
         blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
 
-        self.create_merged_pdf(blobs)
+        try:
+            self.create_merged_pdf(blobs)
+        except FormatError:
+            raise
 
         logging.info("Prepare XML and PDF for sending")
         pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
@@ -48,10 +56,10 @@ class DBProcessor(object):
         }
 
         # Key and certificate for request
-        cert = self.getcertificate()
+        cert = self.get_certificate()
 
-        logging.info("Send XML and PDF to ISP")
         # Posting XML data and PDF file to server in separate requests
+        logging.info("Send XML and PDF to ISP")
         rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
         if not rxml.ok:
             logging.info("[{}] Failed to upload XML invoice".format(
@@ -80,12 +88,16 @@ class DBProcessor(object):
                 if blob.name != self.pdf_file:
                     pdf_files.append(blob)
                 else:
-                    blob_presence = bucket_isp.blob(blob.name)
+                    blob_presence = bucket_isp.get_blob(blob.name)
                     pdf_files = [blob] + pdf_files
 
+        # Don't handle message twice if files have been merged recently
         if blob_presence.exists():
             logging.warning("Merged PDF already exists")
-
+            time_difference = datetime.now(timezone.utc) - blob_presence.updated
+            if time_difference < timedelta(minutes=1):
+                raise FormatError(4000, function_name="create_merged_pdf",
+                                  fields=blob_presence.name, description="PDF was already merged within short timeframe")
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
             with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as self.merged_pdf:
@@ -120,7 +132,7 @@ class DBProcessor(object):
 
         return content  # Return the content from the temp file
 
-    def getcertificate(self):
+    def get_certificate(self):
         client = kms_v1.KeyManagementServiceClient()
 
         # Get the passphrase for the private key
@@ -148,37 +160,37 @@ class DBProcessor(object):
 
         return cert_file_path, key_file_path
 
-    def translatetoxml(self, invoice_json):
+    def translate_to_xml(self, invoice_json):
         # Get company code and filename from JSON
         self.invoice_number = invoice_json['invoice']['invoice_number']
-        self.buildfilename(invoice_json)
-        self.companyrouting(invoice_json)
+        self.get_filename(invoice_json)
+        self.company_routing(invoice_json)
 
         # Translate to output JSON
-        outputjson = translate.translatejson(invoice_json, 'translation.json')
+        output_json = translate.translatejson(invoice_json, 'translation.json')
 
         # Translate to XML for ISP
-        return translate.translate_xml_json(outputjson)
+        return translate.translate_xml_json(output_json)
 
     # Get hostname for corresponding company
-    def companyrouting(self, invoice_json):
+    def company_routing(self, invoice_json):
         # Company code
         self.companycode = invoice_json['invoice']['company_id']
 
         # Make URL from dictionary in config
         self.url = config.HOSTNAME + invoice_json['invoice']['url_extension']
 
-    def buildfilename(self, invoicejson):
+    def get_filename(self, invoice_json):
         # Get bucketname for PDF file and general filename for both XML and PDF
-        if 'stg' in invoicejson['invoice']['pdf_file']:
+        if 'stg' in invoice_json['invoice']['pdf_file']:
 
-            partnames = invoicejson['invoice']['pdf_file'][:-4].split('/')
+            name_build = invoice_json['invoice']['pdf_file'][:-4].split('/')
 
-            self.bucket_name_einvoices = partnames[2]
-            self.file_name = partnames[-1]
-            self.pdf_file = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1]
-            self.base_path = invoicejson['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1].split(f"{self.file_name}")[0]
+            self.bucket_name_einvoices = name_build[2]
+            self.file_name = name_build[-1]
+            self.pdf_file = invoice_json['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1]
+            self.base_path = invoice_json['invoice']['pdf_file'].split(f"{self.bucket_name_einvoices}/")[1].split(f"{self.file_name}")[0]
 
-            invoicejson['invoice']['pdf_file'] = self.file_name
+            invoice_json['invoice']['pdf_file'] = self.file_name
         else:
             logging.info("[{}] PDF not in bucket".format(self.invoice_number))
