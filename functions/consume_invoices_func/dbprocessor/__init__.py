@@ -1,17 +1,18 @@
 import requests
 import os
+import json
 import config
 import logging
 import tempfile
 
-from . import format_error
+from . import translate_error
 from translation import translate
 from datetime import datetime, timezone, timedelta
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
 
-FormatError = format_error.FormatError
+TranslateError = translate_error.TranslateError
 
 
 class DBProcessor(object):
@@ -30,54 +31,63 @@ class DBProcessor(object):
         pass
 
     def process(self, payload):
-        xml = self.translate_to_xml(payload)
-
-        # Get files from einvoices bucket
-        bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
-        blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
-
         try:
-            self.create_merged_pdf(blobs)
-        except FormatError:
-            raise
+            xml = self.translate_to_xml(payload)
 
-        logging.info("Prepare XML and PDF for sending")
-        pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
-        headerspdf = {
-            'Content-Type': "application/pdf",
-            'Accept': "application/pdf",
-            'Filename': self.file_name
-        }
+            # Get files from einvoices bucket
+            bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
+            blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
 
-        headersxml = {
-            'Content-Type': "application/xml",
-            'Accept': "application/xml",
-            'Filename': self.file_name
-        }
+            try:
+                self.create_merged_pdf(blobs)
+            except TranslateError:
+                raise
 
-        # Key and certificate for request
-        cert = self.get_certificate()
+            logging.info("Prepare XML and PDF for sending")
+            pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
+            headerspdf = {
+                'Content-Type': "application/pdf",
+                'Accept': "application/pdf",
+                'Filename': self.file_name
+            }
 
-        # Posting XML data and PDF file to server in separate requests
-        logging.info("Send XML and PDF to ISP")
-        rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
-        if not rxml.ok:
-            logging.info("[{}] Failed to upload XML invoice".format(
-                self.invoice_number))
-        else:
-            logging.info("[{}] XML invoice sent".format(self.invoice_number))
+            headersxml = {
+                'Content-Type': "application/xml",
+                'Accept': "application/xml",
+                'Filename': self.file_name
+            }
 
-            rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
-            if not rpdf.ok:
-                logging.info("[{}] Failed to upload PDF invoice file".format(
+            # Key and certificate for request
+            cert = self.get_certificate()
+
+            # Posting XML data and PDF file to server in separate requests
+            logging.info("Send XML and PDF to ISP")
+            rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
+            if not rxml.ok:
+                logging.info("[{}] Failed to upload XML invoice".format(
                     self.invoice_number))
             else:
-                logging.info("[{}] PDF invoice sent".format(
-                    self.invoice_number))
+                logging.info("[{}] XML invoice sent".format(self.invoice_number))
 
-        # Remove (content) temp file
-        self.merged_pdf.close()
-        os.unlink(self.merged_pdf.name)
+                rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
+                if not rpdf.ok:
+                    logging.info("[{}] Failed to upload PDF invoice file".format(
+                        self.invoice_number))
+                else:
+                    logging.info("[{}] PDF invoice sent".format(
+                        self.invoice_number))
+
+            # Remove (content) temp file
+            self.merged_pdf.close()
+            os.unlink(self.merged_pdf.name)
+
+        except TranslateError as e:
+            if e.properties['error']["exception_id"] == 4030:
+                logging.warning(json.dumps(e.properties))
+            else:
+                logging.error(json.dumps(e.properties))
+        except Exception as e:
+            logging.exception(e)
 
     def create_merged_pdf(self, blobs):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
@@ -96,8 +106,9 @@ class DBProcessor(object):
             logging.warning("Merged PDF already exists")
             time_difference = datetime.now(timezone.utc) - blob_presence.updated
             if time_difference < timedelta(minutes=1):
-                raise FormatError(4000, function_name="create_merged_pdf",
-                                  fields=blob_presence.name, description="PDF was already merged within short timeframe")
+                raise TranslateError(4030, function_name="create_merged_pdf",
+                                     fields=blob_presence.name, description="PDF was already merged within short timeframe")
+
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
             with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as self.merged_pdf:
