@@ -9,6 +9,7 @@ class TranslateError(Exception):
         timestamp = datetime.datetime.now(tz=timezone)
 
         exception_list = {
+            4000: "Message has incorrect structure",
             4030: "Duplicate message from topic"
         }
 

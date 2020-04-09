@@ -7,7 +7,7 @@ import tempfile
 
 from . import translate_error
 from translation import translate
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
@@ -21,16 +21,16 @@ class DBProcessor(object):
         self.companycode = ''
         self.url = ''
         self.file_name = ''
+        self.file_metadata = 'metadata.json'
         self.base_path = ''
         self.bucket_name_einvoices = ''
         self.bucket_name_isp = config.BUCKET_NAME
         self.invoice_number = ''
-        self.file_path_merged = ''
         self.merged_pdf = None
         self.client = storage.Client()
         pass
 
-    def process(self, payload):
+    def process(self, payload, in_request, message):
         try:
             xml = self.translate_to_xml(payload)
 
@@ -38,7 +38,10 @@ class DBProcessor(object):
             bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
             blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
 
+            gobits = self.get_metadata(in_request, message)
+
             try:
+                self.check_metadata(gobits)
                 self.create_merged_pdf(blobs)
             except TranslateError:
                 raise
@@ -81,6 +84,9 @@ class DBProcessor(object):
             self.merged_pdf.close()
             os.unlink(self.merged_pdf.name)
 
+            # Update metadata
+            self.update_metadata(gobits, payload['gobits'])
+
         except TranslateError as e:
             if e.properties['error']["exception_id"] == 4030:
                 logging.warning(json.dumps(e.properties))
@@ -88,6 +94,45 @@ class DBProcessor(object):
                 logging.error(json.dumps(e.properties))
         except Exception as e:
             logging.exception(e)
+
+    def check_metadata(self, gobits):
+        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
+        blob = bucket_isp.get_blob(self.base_path + self.file_metadata)
+        if blob is not None:
+            metadata = json.loads(blob.download_as_string())
+            for step in metadata['gobits']:
+                if step.get('message_id', '') == gobits['message_id'] and \
+                 step.get('gcp_project', '') == gobits['gcp_project']:
+                    raise TranslateError(4030, function_name="check_metadata",
+                                         fields=[gobits['message_id'], gobits['gcp_project']],
+                                         description="Message has already been processed")
+
+            raise TranslateError(4000, function_name="check_metadata",
+                                 fields=["message_id"],
+                                 description="Message has duplicate path but different message IDs")
+
+    def get_metadata(self, in_request, message):
+        gobits = {
+            'gcp_project': os.environ.get('GCP_PROJECT', ''),
+            'execution_id': in_request.headers.get('Function-Execution-Id', ''),
+            'execution_type': 'cloud_function',
+            'execution_name': os.environ.get('FUNCTION_NAME', ''),
+            'execution_trigger_type': os.environ.get('FUNCTION_TRIGGER_TYPE', ''),
+            'message_id': message.get('messageId', ''),
+            'message_timestamp': message.get('publishTime', ''),
+            'timestamp': datetime.utcnow().strftime(
+                "%Y-%m-%dT%H:%M:%S.%fZ")
+        }
+        return gobits
+
+    def update_metadata(self, gobits, payload_gobits):
+        bucket_isp = self.client.get_bucket(self.bucket_name_isp)
+        blob = bucket_isp.blob(self.base_path + self.file_metadata)
+        metadata = {
+            "gobits": payload_gobits + [gobits]
+        }
+        blob.upload_from_string(json.dumps(metadata),
+                                content_type='application/json')
 
     def create_merged_pdf(self, blobs):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
@@ -98,16 +143,7 @@ class DBProcessor(object):
                 if blob.name != self.pdf_file:
                     pdf_files.append(blob)
                 else:
-                    blob_presence = bucket_isp.get_blob(blob.name)
                     pdf_files = [blob] + pdf_files
-
-        # Don't handle message twice if files have been merged recently
-        if blob_presence is not None:
-            logging.warning("Merged PDF already exists")
-            time_difference = datetime.now(timezone.utc) - blob_presence.updated
-            if time_difference < timedelta(minutes=1):
-                raise TranslateError(4030, function_name="create_merged_pdf",
-                                     fields=blob_presence.name, description="PDF was already merged within short timeframe")
 
         if len(pdf_files) == 1:
             content = pdf_files[0].download_as_string()
