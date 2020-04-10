@@ -41,7 +41,8 @@ class DBProcessor(object):
             gobits = self.get_metadata(in_request, message)
 
             try:
-                self.check_metadata(gobits)
+                if self.file_name != "e2e_test":
+                    self.check_metadata(gobits)
                 self.create_merged_pdf(blobs)
             except TranslateError:
                 raise
@@ -69,7 +70,7 @@ class DBProcessor(object):
             if not rxml.ok:
                 raise TranslateError(4001, function_name="process",
                                      fields=[rxml],
-                                     description=f"XML from {self.invoice_number} post request to ISP failed")
+                                     description=f"Invoice {self.invoice_number}: XML post request to ISP failed")
             else:
                 logging.info("[{}] XML invoice sent".format(self.invoice_number))
 
@@ -77,7 +78,7 @@ class DBProcessor(object):
                 if not rpdf.ok:
                     raise TranslateError(4001, function_name="process",
                                          fields=[rpdf],
-                                         description=f"PDF from {self.invoice_number} post request to ISP failed")
+                                         description=f"Invoice {self.invoice_number}: PDF post request to ISP failed")
                 else:
                     logging.info("[{}] PDF invoice sent".format(
                         self.invoice_number))
@@ -91,7 +92,7 @@ class DBProcessor(object):
 
         except TranslateError as e:
             if e.properties['error']['exception_id'] == 4030:
-                logging.warning(json.dumps(e.properties))
+                logging.info(json.dumps({'warning': e.properties['error']}))
             else:
                 logging.error(json.dumps(e.properties))
         except Exception as e:
@@ -107,11 +108,11 @@ class DBProcessor(object):
                  step.get('gcp_project', '') == gobits['gcp_project']:
                     raise TranslateError(4030, function_name="check_metadata",
                                          fields=[gobits['message_id'], gobits['gcp_project']],
-                                         description="Message has already been processed")
+                                         description=f"Invoice {self.invoice_number}: Message has already been processed")
 
             raise TranslateError(4000, function_name="check_metadata",
                                  fields=["message_id"],
-                                 description="Message has duplicate path but different message IDs")
+                                 description=f"Invoice {self.invoice_number}: Message has duplicate path but different message IDs")
 
     def get_metadata(self, in_request, message):
         gobits = {
