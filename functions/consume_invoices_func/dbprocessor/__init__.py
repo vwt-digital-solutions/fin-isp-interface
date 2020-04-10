@@ -67,15 +67,17 @@ class DBProcessor(object):
             logging.info("Send XML and PDF to ISP")
             rxml = requests.post(self.url, headers=headersxml, data=xml, cert=cert, verify=True)
             if not rxml.ok:
-                logging.info("[{}] Failed to upload XML invoice".format(
-                    self.invoice_number))
+                raise TranslateError(4001, function_name="process",
+                                     fields=[rxml],
+                                     description=f"XML from {self.invoice_number} post request to ISP failed")
             else:
                 logging.info("[{}] XML invoice sent".format(self.invoice_number))
 
                 rpdf = requests.post(self.url, headers=headerspdf, files=pdf, cert=cert, verify=True)
                 if not rpdf.ok:
-                    logging.info("[{}] Failed to upload PDF invoice file".format(
-                        self.invoice_number))
+                    raise TranslateError(4001, function_name="process",
+                                         fields=[rpdf],
+                                         description=f"PDF from {self.invoice_number} post request to ISP failed")
                 else:
                     logging.info("[{}] PDF invoice sent".format(
                         self.invoice_number))
@@ -88,7 +90,7 @@ class DBProcessor(object):
             self.update_metadata(gobits, payload['gobits'])
 
         except TranslateError as e:
-            if e.properties['error']["exception_id"] == 4030:
+            if e.properties['error']['exception_id'] == 4030:
                 logging.warning(json.dumps(e.properties))
             else:
                 logging.error(json.dumps(e.properties))

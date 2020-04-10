@@ -10,6 +10,7 @@ class TranslateError(Exception):
 
         exception_list = {
             4000: "Message has incorrect structure",
+            4001: "Request failed",
             4030: "Duplicate message from topic"
         }
 
