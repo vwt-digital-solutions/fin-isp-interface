@@ -89,7 +89,7 @@ class DBProcessor(object):
 
         except TranslateError as e:
             if e.properties['error']["exception_id"] == 4030:
-                logging.warning(json.dumps(e.properties))
+                logging.info(json.dumps(e.properties))
             else:
                 logging.error(json.dumps(e.properties))
         except Exception as e:
