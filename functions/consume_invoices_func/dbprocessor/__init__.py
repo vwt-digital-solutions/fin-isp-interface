@@ -43,9 +43,10 @@ class DBProcessor(object):
             try:
                 if self.file_name != "e2e_test":
                     self.check_metadata(gobits)
-                self.create_merged_pdf(blobs)
             except TranslateError:
                 raise
+            else:
+                self.create_merged_pdf(blobs)
 
             logging.info("Prepare XML and PDF for sending")
             pdf = {'pdf': (self.file_name, open(self.merged_pdf.name, 'rb'))}
@@ -85,7 +86,7 @@ class DBProcessor(object):
 
             # Remove (content) temp file
             self.merged_pdf.close()
-            os.unlink(self.merged_pdf.name)
+            os.unlink(self.merged_pdf.name, cert[1])
 
             # Update metadata
             self.update_metadata(gobits, payload['gobits'])
@@ -100,9 +101,9 @@ class DBProcessor(object):
 
     def check_metadata(self, gobits):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
-        blob = bucket_isp.get_blob(self.base_path + self.file_metadata)
-        if blob is not None:
-            metadata = json.loads(blob.download_as_string())
+        blob_metadata = bucket_isp.blob(self.base_path + self.file_metadata)
+        if blob_metadata.exists():
+            metadata = json.loads(blob_metadata.download_as_string())
             for step in metadata['gobits']:
                 if step.get('message_id', '') == gobits['message_id'] and \
                  step.get('gcp_project', '') == gobits['gcp_project']:
@@ -110,9 +111,13 @@ class DBProcessor(object):
                                          fields=[gobits['message_id'], gobits['gcp_project']],
                                          description=f"Invoice {self.invoice_number}: Message has already been processed")
 
-            raise TranslateError(4000, function_name="check_metadata",
-                                 fields=["message_id"],
+            raise TranslateError(4000, function_name="check_metadata", fields=["message_id"],
                                  description=f"Invoice {self.invoice_number}: Message has duplicate path but different message IDs")
+
+        blob_mergedpdf = bucket_isp.blob(f"{self.base_path}{self.file_name}.pdf")
+        if blob_mergedpdf.exists():
+            raise TranslateError(4000, function_name="check_metadata", fields=["message_id"],
+                                 description=f"Invoice {self.invoice_number}: Merged PDF already exists")
 
     def get_metadata(self, in_request, message):
         gobits = {
@@ -155,12 +160,17 @@ class DBProcessor(object):
         else:
             content = self.merge_pdf_files(pdf_files)
 
-        blob = bucket_isp.blob(f"{self.base_path}{self.file_name}.pdf")
+        try:
+            blob = bucket_isp.blob(f"{self.base_path}{self.file_name}.pdf")
 
-        blob.upload_from_string(
-                content,  # Upload content
-                content_type="application/pdf"
-            )
+            if not blob.exists():
+                blob.upload_from_string(
+                    content,  # Upload content
+                    content_type="application/pdf"
+                )
+        except Exception as e:
+            logging.error("An error occured during uploading blob: {}".format(e))
+
         logging.info(f"Merged file uploaded to storage: {self.file_name}.pdf")
 
     def merge_pdf_files(self, pdf_files):
@@ -202,9 +212,10 @@ class DBProcessor(object):
 
         # Write un-encrypted key to file (for requests library)
         pk = crypto.load_privatekey(crypto.FILETYPE_PEM, response.plaintext, passphrase.encode())
-        key_file_path = "/tmp/key.pem"
-        open(key_file_path, "w").write(
-            str(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
+            temp_file.write(str(
+                crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
+            key_file_path = temp_file.name
 
         cert_file_path = "ispinvoice-cert.pem"
 
