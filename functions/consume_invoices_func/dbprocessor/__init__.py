@@ -63,7 +63,8 @@ class DBProcessor(object):
             }
 
             # Key and certificate for request
-            cert = self.get_certificate()
+            cert_file_path, pem_file = self.get_certificate()
+            cert = (cert_file_path, pem_file.name)
 
             # Posting XML data and PDF file to server in separate requests
             logging.info("Send XML and PDF to ISP")
@@ -86,7 +87,9 @@ class DBProcessor(object):
 
             # Remove (content) temp file
             self.merged_pdf.close()
-            os.unlink(self.merged_pdf.name, cert[1])
+            pem_file.close()
+            os.unlink(self.merged_pdf.name)
+            os.unlink(pem_file.name)
 
             # Update metadata
             self.update_metadata(gobits, payload['gobits'])
@@ -168,10 +171,9 @@ class DBProcessor(object):
                     content,  # Upload content
                     content_type="application/pdf"
                 )
+                logging.info(f"Merged file uploaded to storage: {self.file_name}.pdf")
         except Exception as e:
             logging.error("An error occured during uploading blob: {}".format(e))
-
-        logging.info(f"Merged file uploaded to storage: {self.file_name}.pdf")
 
     def merge_pdf_files(self, pdf_files):
         writer = PdfFileWriter()  # Create a PdfFileWriter to store the new PDF
@@ -215,11 +217,10 @@ class DBProcessor(object):
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
             temp_file.write(str(
                 crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
-            key_file_path = temp_file.name
 
         cert_file_path = "ispinvoice-cert.pem"
 
-        return cert_file_path, key_file_path
+        return cert_file_path, temp_file
 
     def translate_to_xml(self, invoice_json):
         # Get company code and filename from JSON
