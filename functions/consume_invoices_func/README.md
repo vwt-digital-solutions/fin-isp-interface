@@ -27,28 +27,11 @@ The consume-invoices function works as follows:
 
 
 ##### Incoming message
-The message object received from a GCP Pub/Sub topic is defined as described below.
+The message object received from a GCP Pub/Sub topic is defined as described below. For the gobits field, refer to [this](https://github.com/vwt-digital/gobits) repository.
 
 ~~~javascript
 {
-  "gobits": [
-    {
-      "gcp_project": "",
-      "execution_id": "",
-      "execution_type": "",
-      "execution_name": "",
-      "execution_trigger_type": "",
-      "timestamp": ""
-    },
-    {
-      "gcp_project": "",
-      "execution_id": "",
-      "execution_type": "",
-      "execution_name": "",
-      "execution_trigger_type": "",
-      "timestamp": ""
-    },
-  ],
+  "gobits": [previous_gobits, gobits],
   "invoice": {
     "field1": "value1",
     "field2": "value2",
@@ -71,4 +54,3 @@ The XML structure sent to the server according to the [translation.example.json]
 
 ## License
 This function is licensed under the [GPL-3](https://www.gnu.org/licenses/gpl-3.0.en.html) License
-

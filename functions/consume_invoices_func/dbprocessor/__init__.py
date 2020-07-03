@@ -7,10 +7,10 @@ import tempfile
 
 from . import translate_error
 from translation import translate
-from datetime import datetime
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from google.cloud import kms_v1, storage
 from OpenSSL import crypto
+from gobits import Gobits
 
 TranslateError = translate_error.TranslateError
 
@@ -38,7 +38,8 @@ class DBProcessor(object):
             bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
             blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
 
-            gobits = self.get_metadata(in_request, message)
+            bits = Gobits(request=in_request, message=message)
+            gobits = bits.to_json()
 
             try:
                 if self.file_name != "e2e_test":
@@ -121,20 +122,6 @@ class DBProcessor(object):
         if blob_mergedpdf.exists():
             raise TranslateError(4000, function_name="check_metadata", fields=["message_id"],
                                  description=f"Invoice {self.invoice_number}: Merged PDF already exists")
-
-    def get_metadata(self, in_request, message):
-        gobits = {
-            'gcp_project': os.environ.get('GCP_PROJECT', ''),
-            'execution_id': in_request.headers.get('Function-Execution-Id', ''),
-            'execution_type': 'cloud_function',
-            'execution_name': os.environ.get('FUNCTION_NAME', ''),
-            'execution_trigger_type': os.environ.get('FUNCTION_TRIGGER_TYPE', ''),
-            'message_id': message.get('messageId', ''),
-            'message_timestamp': message.get('publishTime', ''),
-            'timestamp': datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%S.%fZ")
-        }
-        return gobits
 
     def update_metadata(self, gobits, payload_gobits):
         bucket_isp = self.client.get_bucket(self.bucket_name_isp)
