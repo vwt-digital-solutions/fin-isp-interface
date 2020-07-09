@@ -45,7 +45,7 @@ def set_message_content(payload, unique_id):
     payload['gobits'][0]['gcp_project'] = PROJECT_ID
     payload['gobits'][0]['execution_id'] = BUILD_ID
     payload['gobits'][0]['execution_name'] = '{}-e2e-test'.format(PROJECT_ID)
-    payload['gobits'][0]['timestamp'] = cur_timestamp.strftime(
+    payload['gobits'][0]['processed'] = cur_timestamp.strftime(
         "%Y-%m-%dT%H:%M:%S.%f")
     payload['invoice']['process_date'] = cur_timestamp.strftime(
         "%Y-%m-%d")
