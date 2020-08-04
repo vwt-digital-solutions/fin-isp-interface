@@ -195,7 +195,7 @@ class DBProcessor(object):
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
             temp_file.write(str)
 
-        return temp_file
+        return temp_file.name
 
     def get_certificates(self):
 
