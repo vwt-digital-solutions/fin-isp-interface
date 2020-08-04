@@ -1,14 +1,14 @@
-import requests
 import os
 import json
 import config
 import logging
 import tempfile
+import requests
 
 from . import translate_error
 from translation import translate
 from PyPDF2 import PdfFileReader, PdfFileWriter
-from google.cloud import kms_v1, storage
+from google.cloud import secretmanager_v1, storage
 from OpenSSL import crypto
 from gobits import Gobits
 
@@ -63,9 +63,7 @@ class DBProcessor(object):
                 'Filename': self.file_name
             }
 
-            # Key and certificate for request
-            cert_file_path, pem_file = self.get_certificate()
-            cert = (cert_file_path, pem_file.name)
+            cert = self.get_certificates()
 
             # Posting XML data and PDF file to server in separate requests
             logging.info("Send XML and PDF to ISP")
@@ -88,9 +86,7 @@ class DBProcessor(object):
 
             # Remove (content) temp file
             self.merged_pdf.close()
-            pem_file.close()
             os.unlink(self.merged_pdf.name)
-            os.unlink(pem_file.name)
 
             # Update metadata
             self.update_metadata(gobits, payload['gobits'])
@@ -181,33 +177,40 @@ class DBProcessor(object):
 
         return content  # Return the content from the temp file
 
-    def get_certificate(self):
-        client = kms_v1.KeyManagementServiceClient()
+    def get_secret(self, project_id, secret_id):
 
-        # Get the passphrase for the private key
-        pk_passphrase = client.crypto_key_path_path(os.environ['GCP_PROJECT'], 'europe-west1',
-                                                    os.environ['GCP_PROJECT'] + '-keyring',
-                                                    config.ISPINVOICES_KEY_PASSPHRASE)
-        response = client.decrypt(pk_passphrase, open('passphrase.enc', "rb").read())
+        client = secretmanager_v1.SecretManagerServiceClient()
 
-        passphrase = response.plaintext.decode("utf-8").replace('\n', '')
+        secret_name = client.secret_version_path(
+            project_id,
+            secret_id,
+            'latest')
 
-        # Get the private key and decode using passphrase
-        pk_enc = client.crypto_key_path_path(os.environ['GCP_PROJECT'],
-                                             'europe-west1',
-                                             os.environ['GCP_PROJECT'] + '-keyring',
-                                             config.ISPINVOICES_KEY)
-        response = client.decrypt(pk_enc, open('ispinvoice-pk.enc', "rb").read())
+        response = client.access_secret_version(secret_name)
+        payload = response.payload.data.decode('UTF-8')
 
-        # Write un-encrypted key to file (for requests library)
-        pk = crypto.load_privatekey(crypto.FILETYPE_PEM, response.plaintext, passphrase.encode())
+        return payload
+
+    def make_temp(str):
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
-            temp_file.write(str(
-                crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
+            temp_file.write(str)
 
-        cert_file_path = "ispinvoice-cert.pem"
+        return temp_file
 
-        return cert_file_path, temp_file
+    def get_certificates(self):
+
+        passphrase = self.get_secret(os.environ['GCP_PROJECT'], config.PASSPHRASE)
+        key = self.get_secret(os.environ['GCP_PROJECT'], config.KEY)
+        certificate = self.get_secret(os.environ['GCP_PROJECT'], config.CERTIFICATE)
+
+        pk = crypto.load_privatekey(crypto.FILETYPE_PEM, key, passphrase.encode())
+
+        key_file = self.make_temp(
+            str(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk, cipher=None, passphrase=None), 'utf-8'))
+
+        cert_file = self.make_temp(certificate)
+
+        return (cert_file, key_file)
 
     def translate_to_xml(self, invoice_json):
         # Get company code and filename from JSON
