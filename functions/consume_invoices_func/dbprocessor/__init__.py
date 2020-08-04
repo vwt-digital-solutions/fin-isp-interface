@@ -187,7 +187,7 @@ class DBProcessor(object):
             'latest')
 
         response = client.access_secret_version(secret_name)
-        payload = response.payload.data.decode('UTF-8').replace('\n', '')
+        payload = response.payload.data.decode('UTF-8')
 
         return payload
 
