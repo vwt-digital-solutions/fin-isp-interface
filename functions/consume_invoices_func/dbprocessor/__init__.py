@@ -187,11 +187,11 @@ class DBProcessor(object):
             'latest')
 
         response = client.access_secret_version(secret_name)
-        payload = response.payload.data.decode('UTF-8')
+        payload = response.payload.data.decode('UTF-8').replace('\n', '')
 
         return payload
 
-    def make_temp(str):
+    def make_temp(self, str):
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
             temp_file.write(str)
 
