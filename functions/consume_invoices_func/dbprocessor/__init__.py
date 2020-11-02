@@ -30,7 +30,7 @@ class DBProcessor(object):
         self.client = storage.Client()
         pass
 
-    def process(self, payload, in_request, message):
+    def process(self, payload, in_request):
         try:
             xml = self.translate_to_xml(payload)
 
@@ -38,7 +38,7 @@ class DBProcessor(object):
             bucket_einvoices = self.client.get_bucket(self.bucket_name_einvoices)
             blobs = self.client.list_blobs(bucket_einvoices, prefix=self.base_path)
 
-            bits = Gobits(request=in_request, message=message)
+            bits = Gobits(request=in_request)
             gobits = bits.to_json()
 
             try:
