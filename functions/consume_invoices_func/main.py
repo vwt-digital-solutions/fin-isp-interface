@@ -11,15 +11,14 @@ logging.basicConfig(level=logging.INFO)
 def topic_to_xml(request):
     # Extract data from request
     envelope = json.loads(request.data.decode('utf-8'))
-    message = envelope['message']
-    payload = base64.b64decode(message['data'])
+    payload = base64.b64decode(envelope['message']['data'])
 
     # Extract subscription from subscription string
     try:
         subscription = envelope['subscription'].split('/')[-1]
         logging.info(f'Message received from {subscription} [{payload}]')
 
-        parser.process(json.loads(payload), request, message)
+        parser.process(json.loads(payload), request)
 
     except Exception as e:
         logging.info('Extract of subscription failed')
